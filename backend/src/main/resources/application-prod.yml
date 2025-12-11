@@ -1,0 +1,50 @@
+server:
+  port: 9499
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: ninhxa-report
+  
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  
+  datasource:
+    url: jdbc:mysql://mysql:3306/ninhxa_report?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Ho_Chi_Minh
+    username: ${MYSQL_USER:ninhxa_user}
+    password: ${MYSQL_PASSWORD:ninhxa_pass123}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: false
+  
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Ho_Chi_Minh
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:ninhxa-report-secret-key-2024-bacninh-government-very-secure-key-256-bits}
+  expiration: 86400000 # 24 hours in milliseconds
+
+# File Upload Configuration
+app:
+  upload:
+    dir: /app/uploads  # Absolute path in container
+
+# Logging
+logging:
+  level:
+    root: INFO
+    vn.gov.bacninh: INFO
+    org.springframework.security: WARN
+

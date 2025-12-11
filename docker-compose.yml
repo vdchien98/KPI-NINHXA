@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ninhxa_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: ninhxa_report
+      MYSQL_USER: ninhxa_user
+      MYSQL_PASSWORD: ninhxa_pass123
+    ports:
+      - "9498:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - ninhxa_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ninhxa_backend
+    restart: always
+    ports:
+      - "9499:9499"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      MYSQL_USER: ninhxa_user
+      MYSQL_PASSWORD: ninhxa_pass123
+      JWT_SECRET: ninhxa-report-secret-key-2024-bacninh-government-very-secure-key-256-bits
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - ninhxa_network
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 9499 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ninhxa_frontend
+    restart: always
+    ports:
+      - "3301:3000"
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      - backend
+    networks:
+      - ninhxa_network
+
+networks:
+  ninhxa_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  backend_uploads:
+
