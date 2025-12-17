@@ -48,3 +48,9 @@ logging:
     vn.gov.bacninh: DEBUG
     org.springframework.security: DEBUG
 
+bacninh:
+  sso:
+    token-url: https://ssobn.bacninh.gov.vn/realms/BacNinh/protocol/openid-connect/token
+    client-id: app-gov-web
+    client-secret: Wd7PQ9pHv5a0imf9Jvv4qIqkunH1kmve
+    basic-authorization: Basic dGFpLWtob2FuLWdvdjpwSWNYYXZLRHR5V1RtMk15SmZTYWxabUR2MkJOanMycg==

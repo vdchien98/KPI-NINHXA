@@ -64,6 +64,10 @@ public class User {
     
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "login_method", nullable = false, length = 32, columnDefinition = "varchar(32) default 'SSO'")
+    private LoginMethod loginMethod = LoginMethod.SSO;
     
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -80,6 +84,11 @@ public class User {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    public enum LoginMethod {
+        SSO,
+        PASSWORD
     }
 }
 

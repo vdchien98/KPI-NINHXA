@@ -57,6 +57,7 @@ interface User {
   department?: { id: number; name: string }
   position?: { id: number; name: string }
   representativeType?: string // 'organization', 'department', or null
+  loginMethod?: string // 'SSO' or 'PASSWORD'
   isActive: boolean
   createdAt: string
 }
@@ -105,6 +106,7 @@ export default function UsersPage() {
     organizationIds: [] as number[],
     departmentId: '',
     positionId: '',
+    loginMethod: 'SSO' as 'SSO' | 'PASSWORD',
     isActive: true,
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -164,6 +166,7 @@ export default function UsersPage() {
         organizationIds: user.organizations?.map(o => o.id) || [],
         departmentId: user.department?.id.toString() || '',
         positionId: user.position?.id.toString() || '',
+        loginMethod: (user.loginMethod || 'SSO') as 'SSO' | 'PASSWORD',
         isActive: user.isActive,
       })
     } else {
@@ -178,6 +181,7 @@ export default function UsersPage() {
         organizationIds: [],
         departmentId: '',
         positionId: '',
+        loginMethod: 'SSO' as 'SSO' | 'PASSWORD',
         isActive: true,
       })
     }
@@ -247,6 +251,9 @@ export default function UsersPage() {
       
       // Gửi representativeType để backend biết user có phải đại diện hay không
       submitData.representativeType = formData.representativeType || null
+      
+      // Gửi loginMethod
+      submitData.loginMethod = formData.loginMethod
 
       if (selectedUser) {
         if (formData.password) {
@@ -366,6 +373,7 @@ export default function UsersPage() {
                   <TableRow>
                     <TableHead>Người dùng</TableHead>
                     <TableHead>Vai trò</TableHead>
+                    <TableHead className="hidden md:table-cell">Phương thức đăng nhập</TableHead>
                     <TableHead className="hidden md:table-cell">Loại đại diện</TableHead>
                     <TableHead className="hidden md:table-cell">Cơ quan</TableHead>
                     <TableHead className="hidden lg:table-cell">Phòng ban</TableHead>
@@ -412,6 +420,17 @@ export default function UsersPage() {
                           </Badge>
                         ) : (
                           <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {user.loginMethod === 'PASSWORD' ? (
+                          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">
+                            Mật khẩu cục bộ
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-green-100 text-green-700 hover:bg-green-200">
+                            SSO
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
@@ -540,6 +559,24 @@ export default function UsersPage() {
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 placeholder="Nhập mật khẩu"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="loginMethod">Phương thức đăng nhập</Label>
+              <Select
+                value={formData.loginMethod}
+                onValueChange={(value) => setFormData({ ...formData, loginMethod: value as 'SSO' | 'PASSWORD' })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn phương thức đăng nhập" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SSO">SSO (Bắc Ninh SSO)</SelectItem>
+                  <SelectItem value="PASSWORD">Mật khẩu cục bộ</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                SSO: Đăng nhập qua hệ thống Bắc Ninh SSO. Mật khẩu cục bộ: Đăng nhập bằng mật khẩu được quản lý trong hệ thống.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="roleId">Vai trò</Label>

@@ -115,6 +115,18 @@ public class UserService {
         // Set representativeType
         user.setRepresentativeType(request.getRepresentativeType());
         
+        // Set loginMethod
+        if (request.getLoginMethod() != null) {
+            try {
+                user.setLoginMethod(User.LoginMethod.valueOf(request.getLoginMethod().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                // Default to SSO if invalid
+                user.setLoginMethod(User.LoginMethod.SSO);
+            }
+        } else {
+            user.setLoginMethod(User.LoginMethod.SSO); // Default to SSO
+        }
+        
         user = userRepository.save(user);
         // Reload user với relations để đảm bảo organizations được load
         user = userRepository.findByIdWithRelations(user.getId())
@@ -196,6 +208,15 @@ public class UserService {
             user.setRepresentativeType(request.getRepresentativeType());
         } else {
             user.setRepresentativeType(null);
+        }
+        
+        // Set loginMethod
+        if (request.getLoginMethod() != null) {
+            try {
+                user.setLoginMethod(User.LoginMethod.valueOf(request.getLoginMethod().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                // Keep existing loginMethod if invalid
+            }
         }
         
         user = userRepository.save(user);

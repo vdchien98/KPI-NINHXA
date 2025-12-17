@@ -35,6 +35,8 @@ public class CreateUserRequest {
     
     private String representativeType; // 'organization', 'department', or null
     
+    private String loginMethod; // 'SSO' or 'PASSWORD'
+    
     private Boolean isActive = true;
 }
 

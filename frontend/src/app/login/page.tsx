@@ -177,10 +177,9 @@ export default function LoginPage() {
 
         {/* Footer */}
         <div className="text-center mt-6 text-sm text-gray-500">
-          <p>© 2024 UBND Phường Ninh Xá, TP Bắc Ninh</p>
+          <p>© 2024 UBND Phường Ninh Xá, tỉnh Bắc Ninh</p>
           <p className="mt-1 flex items-center justify-center gap-1">
             <span className="text-[#DA251D]">★</span>
-            <span>Vì nhân dân phục vụ</span>
             <span className="text-[#FFCD00]">★</span>
           </p>
         </div>

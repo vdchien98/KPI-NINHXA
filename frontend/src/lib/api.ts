@@ -84,6 +84,7 @@ export const userApi = {
     organizationIds?: number[];
     departmentId?: number;
     positionId?: number;
+    loginMethod?: string;
     isActive?: boolean;
   }) => api.post('/admin/users', data),
   update: (id: number, data: {
@@ -95,6 +96,7 @@ export const userApi = {
     organizationIds?: number[];
     departmentId?: number;
     positionId?: number;
+    loginMethod?: string;
     isActive?: boolean;
   }) => api.put(`/admin/users/${id}`, data),
   delete: (id: number) => api.delete(`/admin/users/${id}`),

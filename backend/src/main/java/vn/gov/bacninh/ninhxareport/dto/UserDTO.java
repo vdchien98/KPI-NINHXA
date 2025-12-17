@@ -25,6 +25,7 @@ public class UserDTO {
     private DepartmentDTO department;
     private PositionDTO position;
     private String representativeType; // 'organization', 'department', or null
+    private String loginMethod; // 'SSO' or 'PASSWORD'
     private Boolean isActive;
     private LocalDateTime lastLogin;
     private LocalDateTime createdAt;
@@ -46,6 +47,7 @@ public class UserDTO {
                 .department(user.getDepartment() != null ? DepartmentDTO.fromEntity(user.getDepartment()) : null)
                 .position(user.getPosition() != null ? PositionDTO.fromEntity(user.getPosition()) : null)
                 .representativeType(user.getRepresentativeType())
+                .loginMethod(user.getLoginMethod() != null ? user.getLoginMethod().name() : "SSO")
                 .isActive(user.getIsActive())
                 .lastLogin(user.getLastLogin())
                 .createdAt(user.getCreatedAt())
