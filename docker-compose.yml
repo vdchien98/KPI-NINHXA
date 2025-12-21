@@ -10,13 +10,13 @@ services:
       MYSQL_DATABASE: ninhxa_report
       MYSQL_USER: ninhxa_user
       MYSQL_PASSWORD: ninhxa_pass123
-      TZ: Asia/Ho_Chi_Minh
+      TZ: UTC
     ports:
       - "9498:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
-    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone='+07:00'
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone='+00:00'
     networks:
       - ninhxa_network
     healthcheck:
@@ -38,8 +38,8 @@ services:
       MYSQL_USER: ninhxa_user
       MYSQL_PASSWORD: ninhxa_pass123
       JWT_SECRET: ninhxa-report-secret-key-2024-bacninh-government-very-secure-key-256-bits
-      TZ: Asia/Ho_Chi_Minh
-      JAVA_OPTS: -Duser.timezone=Asia/Ho_Chi_Minh
+      TZ: UTC
+      JAVA_OPTS: -Duser.timezone=UTC
     volumes:
       - backend_uploads:/app/uploads
     depends_on:

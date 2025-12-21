@@ -33,6 +33,7 @@ import {
 import { useToast } from '@/components/ui/use-toast'
 import { adminReportApi, commonApi, reportRequestApi } from '@/lib/api'
 import { useRouter } from 'next/navigation'
+import { formatDateOnly, formatDateTime, isPast, toDateTimeLocal, fromDateTimeLocal } from '@/lib/utils'
 
 interface ReportRequest {
   id: number
@@ -163,7 +164,7 @@ export default function AdminReportsPage() {
     setEditFormData({
       title: report.title,
       description: report.description || '',
-      deadline: report.deadline ? new Date(report.deadline).toISOString().slice(0, 16) : '',
+      deadline: report.deadline ? toDateTimeLocal(report.deadline) : '',
       status: report.status,
       organizationIds: report.targetOrganizations?.map(o => o.id) || [],
       departmentIds: report.targetDepartments?.map(d => d.id) || [],
@@ -177,7 +178,7 @@ export default function AdminReportsPage() {
     try {
       await adminReportApi.updateRequest(selectedReport.id, {
         ...editFormData,
-        deadline: editFormData.deadline || undefined,
+        deadline: editFormData.deadline ? fromDateTimeLocal(editFormData.deadline) : undefined,
       })
       
       toast({
@@ -458,8 +459,8 @@ export default function AdminReportsPage() {
                     <TableCell>
                       {report.deadline ? (
                         <div className="text-sm">
-                          {new Date(report.deadline).toLocaleDateString('vi-VN')}
-                          {new Date(report.deadline) < new Date() && report.status !== 'COMPLETED' && (
+                          {formatDateOnly(report.deadline)}
+                          {isPast(report.deadline) && report.status !== 'COMPLETED' && (
                             <Badge className="ml-2 bg-red-100 text-red-800">Quá hạn</Badge>
                           )}
                         </div>
@@ -570,7 +571,7 @@ export default function AdminReportsPage() {
                       <div>
                         <span className="text-gray-500">Ngày nộp:</span>{' '}
                         {response.submittedAt
-                          ? new Date(response.submittedAt).toLocaleString('vi-VN')
+                          ? formatDateTime(response.submittedAt)
                           : 'Chưa nộp'}
                       </div>
                       <div>

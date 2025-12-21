@@ -17,9 +17,10 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Install netcat for healthcheck and timezone data
+# Set timezone to UTC (all datetime operations use UTC)
 RUN apk add --no-cache netcat-openbsd tzdata && \
-    cp /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime && \
-    echo "Asia/Ho_Chi_Minh" > /etc/timezone
+    cp /usr/share/zoneinfo/UTC /etc/localtime && \
+    echo "UTC" > /etc/timezone
 
 # Create non-root user
 RUN addgroup -S spring && adduser -S spring -G spring
@@ -35,8 +36,8 @@ USER spring:spring
 
 EXPOSE 9499
 
-# Set timezone environment variable
-ENV TZ=Asia/Ho_Chi_Minh
+# Set timezone environment variable to UTC
+ENV TZ=UTC
 
-ENTRYPOINT ["java", "-Duser.timezone=Asia/Ho_Chi_Minh", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=UTC", "-jar", "app.jar"]
 

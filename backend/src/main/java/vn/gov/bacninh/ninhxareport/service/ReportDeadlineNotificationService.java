@@ -9,6 +9,8 @@ import vn.gov.bacninh.ninhxareport.entity.*;
 import vn.gov.bacninh.ninhxareport.repository.*;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -51,7 +53,7 @@ public class ReportDeadlineNotificationService {
             LocalDateTime now = LocalDateTime.now();
             
             // Tìm các report requests đang pending hoặc in_progress và chưa quá deadline
-            List<ReportRequestStatus> activeStatuses = Arrays.asList(
+            List<ReportRequest.ReportRequestStatus> activeStatuses = Arrays.asList(
                 ReportRequest.ReportRequestStatus.PENDING,
                 ReportRequest.ReportRequestStatus.IN_PROGRESS
             );
@@ -280,18 +282,23 @@ public class ReportDeadlineNotificationService {
     
     /**
      * Format LocalDateTime thành chuỗi dễ đọc
+     * Convert từ UTC sang GMT+7 (Asia/Ho_Chi_Minh) để hiển thị đúng giờ Việt Nam
      */
     private String formatDateTime(LocalDateTime dateTime) {
         if (dateTime == null) {
             return "N/A";
         }
         
+        // LocalDateTime được hiểu là UTC, convert sang Asia/Ho_Chi_Minh (+07:00)
+        ZonedDateTime utcDateTime = dateTime.atZone(ZoneId.of("UTC"));
+        ZonedDateTime vietnamDateTime = utcDateTime.withZoneSameInstant(ZoneId.of("Asia/Ho_Chi_Minh"));
+        
         return String.format("%02d/%02d/%04d %02d:%02d",
-            dateTime.getDayOfMonth(),
-            dateTime.getMonthValue(),
-            dateTime.getYear(),
-            dateTime.getHour(),
-            dateTime.getMinute()
+            vietnamDateTime.getDayOfMonth(),
+            vietnamDateTime.getMonthValue(),
+            vietnamDateTime.getYear(),
+            vietnamDateTime.getHour(),
+            vietnamDateTime.getMinute()
         );
     }
 }

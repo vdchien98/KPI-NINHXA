@@ -10,9 +10,11 @@ import java.util.TimeZone;
 @EnableScheduling
 public class NinhXaReportApplication {
     public static void main(String[] args) {
-        // Thiết lập timezone Việt Nam ngay khi khởi động ứng dụng
-        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
-        System.setProperty("user.timezone", "Asia/Ho_Chi_Minh");
+        // Thiết lập timezone UTC cho toàn bộ ứng dụng
+        // Tất cả datetime được lưu và xử lý theo UTC
+        // Khi trả về JSON, JacksonConfig sẽ tự động convert sang Asia/Ho_Chi_Minh (+07:00)
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        System.setProperty("user.timezone", "UTC");
         
         SpringApplication.run(NinhXaReportApplication.class, args);
     }

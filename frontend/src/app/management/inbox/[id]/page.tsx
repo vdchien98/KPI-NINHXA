@@ -33,6 +33,7 @@ import {
 import { useToast } from '@/components/ui/use-toast'
 import { reportRequestApi, reportResponseApi, commonApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
+import { formatDate as formatDateUtil, formatDateTime, isPast, fromDateTimeLocal, toDateTimeLocal } from '@/lib/utils'
 import {
   Dialog,
   DialogContent,
@@ -230,7 +231,7 @@ export default function ReceivedRequestDetailPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
+    return formatDateUtil(dateString, {
       weekday: 'long',
       day: '2-digit',
       month: '2-digit',
@@ -241,7 +242,7 @@ export default function ReceivedRequestDetailPage() {
   }
 
   const isOverdue = (deadline: string) => {
-    return new Date(deadline) < new Date() && myResponseStatus !== 'COMPLETED'
+    return isPast(deadline) && myResponseStatus !== 'COMPLETED'
   }
 
   const openRequestHistory = async () => {
@@ -366,7 +367,7 @@ export default function ReceivedRequestDetailPage() {
         title: forwardFormData.title.trim(),
         forwardNote: forwardFormData.forwardNote.trim() || undefined,
         userIds: forwardFormData.userIds,
-        deadline: new Date(forwardFormData.deadline).toISOString(),
+        deadline: fromDateTimeLocal(forwardFormData.deadline),
       })
 
       toast({
@@ -664,7 +665,7 @@ export default function ReceivedRequestDetailPage() {
                     <div className={index < requestHistoryItems.length - 1 ? 'pb-2' : ''}>
                       <p className="text-sm font-medium">Lần {h.version} chỉnh sửa</p>
                       <p className="text-xs text-gray-500">
-                        {new Date(h.editedAt).toLocaleString('vi-VN')}
+                        {formatDateTime(h.editedAt)}
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {h.editedBy?.fullName || 'N/A'}
@@ -689,7 +690,7 @@ export default function ReceivedRequestDetailPage() {
                   Báo cáo của bạn
                 </CardTitle>
                 <CardDescription>
-                  Nộp lúc: {new Date(myResponse.submittedAt).toLocaleString('vi-VN')}
+                  Nộp lúc: {formatDateTime(myResponse.submittedAt)}
                   <div className="flex items-center gap-4 mt-2">
                     {myResponse.score !== null && myResponse.score !== undefined && (
                       <span className="flex items-center gap-1">
@@ -699,7 +700,7 @@ export default function ReceivedRequestDetailPage() {
                         </span>
                         {myResponse.evaluatedAt && (
                           <span className="text-gray-500 text-xs">
-                            ({new Date(myResponse.evaluatedAt).toLocaleDateString('vi-VN')})
+                            ({formatDateUtil(myResponse.evaluatedAt, { day: '2-digit', month: '2-digit', year: 'numeric' })})
                           </span>
                         )}
                       </span>
@@ -748,7 +749,7 @@ export default function ReceivedRequestDetailPage() {
                     - {myResponse.evaluatedBy.fullName}
                     {myResponse.evaluatedAt && (
                       <span className="ml-2">
-                        ({new Date(myResponse.evaluatedAt).toLocaleString('vi-VN')})
+                        ({formatDateTime(myResponse.evaluatedAt)})
                       </span>
                     )}
                   </p>
@@ -832,7 +833,7 @@ export default function ReceivedRequestDetailPage() {
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div>
                       <p className="text-sm font-semibold">
-                        Lần {h.version} • {new Date(h.editedAt).toLocaleString('vi-VN')}
+                        Lần {h.version} • {formatDateTime(h.editedAt)}
                       </p>
                       <p className="text-xs text-gray-600">
                         Người chỉnh sửa: {h.editedBy?.fullName || 'N/A'}
@@ -853,7 +854,7 @@ export default function ReceivedRequestDetailPage() {
                     <div>
                       <p className="text-xs font-medium text-gray-700 mb-1">Hạn báo cáo:</p>
                       <p className="text-sm text-gray-900 bg-white p-2 rounded border">
-                        {new Date(h.deadline).toLocaleString('vi-VN')}
+                        {formatDateTime(h.deadline)}
                       </p>
                     </div>
                     {(h.targetOrganizations?.length > 0 || h.targetDepartments?.length > 0 || h.targetUsers?.length > 0) && (
@@ -909,7 +910,7 @@ export default function ReceivedRequestDetailPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <p className="text-sm font-semibold">
-                          {new Date(comment.commentedAt).toLocaleString('vi-VN')}
+                          {formatDateTime(comment.commentedAt)}
                         </p>
                         {comment.isFinalEvaluation && (
                           <Badge className="bg-green-100 text-green-700 text-xs">Đánh giá cuối</Badge>

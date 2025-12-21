@@ -11,6 +11,7 @@ import { RefreshCw, Key, AlertCircle, CheckCircle2, Clock, Loader2 } from 'lucid
 import { useToast } from '@/components/ui/use-toast'
 import { zaloOAuthApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
+import { formatDateTime } from '@/lib/utils'
 
 interface ZaloTokenInfo {
   id: number
@@ -131,18 +132,7 @@ export default function ZaloTokenManagementPage() {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Không có'
-    try {
-      return new Date(dateString).toLocaleString('vi-VN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      })
-    } catch {
-      return dateString
-    }
+    return formatDateTime(dateString)
   }
 
   if (!isAuthenticated || user?.role?.name !== 'Admin') {

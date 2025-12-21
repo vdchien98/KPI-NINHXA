@@ -29,6 +29,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { useRouter } from 'next/navigation'
 import { reportRequestApi, commonApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
+import { formatDate as formatDateUtil, isPast, fromDateTimeLocal } from '@/lib/utils'
 
 interface ReportRequest {
   id: number
@@ -107,17 +108,11 @@ export default function InboxPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+    return formatDateUtil(dateString)
   }
 
   const isOverdue = (deadline: string, status: string) => {
-    return new Date(deadline) < new Date() && status !== 'COMPLETED' && status !== 'CANCELLED'
+    return isPast(deadline) && status !== 'COMPLETED' && status !== 'CANCELLED'
   }
 
   const filteredRequests = requests.filter((request) =>
@@ -211,7 +206,7 @@ export default function InboxPage() {
         title: forwardFormData.title.trim(),
         forwardNote: forwardFormData.forwardNote.trim() || undefined,
         userIds: forwardFormData.userIds,
-        deadline: new Date(forwardFormData.deadline).toISOString(),
+        deadline: fromDateTimeLocal(forwardFormData.deadline),
       })
 
       toast({

@@ -13,7 +13,7 @@ spring:
       max-request-size: 50MB
   
   datasource:
-    url: jdbc:mysql://localhost:9498/ninhxa_report?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Ho_Chi_Minh
+    url: jdbc:mysql://localhost:9498/ninhxa_report?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
     username: ninhxa_user
     password: ninhxa_pass123
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -28,8 +28,9 @@ spring:
         format_sql: true
   
   jackson:
-    date-format: yyyy-MM-dd HH:mm:ss
-    time-zone: Asia/Ho_Chi_Minh
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
 
 # JWT Configuration
 jwt:

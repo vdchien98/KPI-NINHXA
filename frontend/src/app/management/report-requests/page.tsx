@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/use-toast'
 import { useRouter } from 'next/navigation'
 import { reportRequestApi } from '@/lib/api'
+import { isPast, formatDate as formatDateUtil } from '@/lib/utils'
 
 interface ReportRequest {
   id: number
@@ -98,7 +99,7 @@ export default function ReportRequestsPage() {
   }
 
   const isOverdue = (deadline: string, status: string) => {
-    return new Date(deadline) < new Date() && status !== 'COMPLETED' && status !== 'CANCELLED'
+    return isPast(deadline) && status !== 'COMPLETED' && status !== 'CANCELLED'
   }
 
   const getStatusBadge = (status: string, deadline: string) => {
@@ -124,13 +125,7 @@ export default function ReportRequestsPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+    return formatDateUtil(dateString)
   }
 
   const filteredRequests = requests.filter((request) =>

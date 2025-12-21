@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { useRouter } from 'next/navigation'
 import { reportRequestApi, commonApi } from '@/lib/api'
 import { useAuthStore } from '@/lib/store'
+import { fromDateTimeLocal } from '@/lib/utils'
 
 interface User {
   id: number
@@ -127,7 +128,7 @@ export default function CreateReportRequestPage() {
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         userIds: formData.userIds,
-        deadline: new Date(formData.deadline).toISOString(),
+        deadline: fromDateTimeLocal(formData.deadline),
       })
       
       toast({
@@ -333,7 +334,18 @@ export default function CreateReportRequestPage() {
                 <p className="text-sm text-gray-500">Thời hạn</p>
                 <p className="font-medium">
                   {formData.deadline 
-                    ? new Date(formData.deadline).toLocaleString('vi-VN')
+                    ? (() => {
+                        // formData.deadline is from datetime-local input (YYYY-MM-DDTHH:mm)
+                        // Parse as local time and format
+                        const date = new Date(formData.deadline)
+                        return date.toLocaleString('vi-VN', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      })()
                     : '(Chưa chọn)'}
                 </p>
               </div>

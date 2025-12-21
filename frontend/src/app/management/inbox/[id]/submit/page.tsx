@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/use-toast'
 import { reportRequestApi, reportResponseApi } from '@/lib/api'
+import { isPast, formatDateTime } from '@/lib/utils'
 
 interface ReportRequest {
   id: number
@@ -186,7 +187,7 @@ export default function SubmitReportPage() {
 
   const isOverdue = () => {
     if (!request?.deadline) return false
-    return new Date(request.deadline) < new Date()
+    return isPast(request.deadline)
   }
 
   const handleSubmit = async () => {
@@ -354,7 +355,7 @@ export default function SubmitReportPage() {
               )}
               <div className="flex items-center gap-2 mt-2">
                 <p className={`text-xs ${isOverdue() ? 'text-red-600' : 'text-blue-600'}`}>
-                  Hạn nộp: {request?.deadline && new Date(request.deadline).toLocaleString('vi-VN')}
+                  Hạn nộp: {request?.deadline && formatDateTime(request.deadline)}
                 </p>
                 {isOverdue() && (
                   <Badge className="bg-red-100 text-red-700 border-red-300 text-xs">

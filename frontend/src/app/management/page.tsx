@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { useRouter } from 'next/navigation'
 import { reportRequestApi } from '@/lib/api'
 import { useToast } from '@/components/ui/use-toast'
+import { formatDate as formatDateUtil } from '@/lib/utils'
 
 interface ReportRequest {
   id: number
@@ -68,13 +69,7 @@ export default function ManagementDashboard() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+    return formatDateUtil(dateString)
   }
 
   return (
