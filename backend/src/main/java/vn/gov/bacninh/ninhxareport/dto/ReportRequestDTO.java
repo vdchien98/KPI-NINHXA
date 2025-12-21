@@ -37,6 +37,11 @@ public class ReportRequestDTO {
     // Status của response của user hiện tại (dùng cho inbox)
     private String myResponseStatus; // PENDING, SUBMITTED, COMPLETED
     
+    // Thống kê cho admin
+    private Integer totalResponses; // Tổng số response
+    private Integer evaluatedResponses; // Số response đã được đánh giá
+    private Double averageScore; // Điểm trung bình
+    
     public static ReportRequestDTO fromEntity(ReportRequest request) {
         if (request == null) return null;
         

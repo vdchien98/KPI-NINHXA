@@ -14,7 +14,8 @@ import {
   Building,
   Star,
   ChevronDown,
-  Award
+  Award,
+  FileText
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,11 @@ const sidebarItems = [
     title: 'Tổng quan',
     href: '/admin',
     icon: LayoutDashboard,
+  },
+  {
+    title: 'Quản lý Báo cáo',
+    href: '/admin/reports',
+    icon: FileText,
   },
   {
     title: 'Quản lý Role',

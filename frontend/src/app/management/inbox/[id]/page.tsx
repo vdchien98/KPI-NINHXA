@@ -104,9 +104,6 @@ export default function ReceivedRequestDetailPage() {
   }
   
   const myResponseStatus = getMyResponseStatus()
-  const [selfEvaluatingResponseId, setSelfEvaluatingResponseId] = useState<number | null>(null)
-  const [selfEvaluationScore, setSelfEvaluationScore] = useState('')
-  const [isSelfEvaluating, setIsSelfEvaluating] = useState(false)
   const [requestHistoryOpen, setRequestHistoryOpen] = useState(false)
   const [requestHistoryLoading, setRequestHistoryLoading] = useState(false)
   const [requestHistoryItems, setRequestHistoryItems] = useState<any[]>([])
@@ -197,37 +194,6 @@ export default function ReceivedRequestDetailPage() {
     }
   }
 
-  const handleSelfEvaluate = async (responseId: number) => {
-    const score = parseFloat(selfEvaluationScore)
-    if (isNaN(score) || score < 0 || score > 10) {
-      toast({
-        title: 'Lỗi',
-        description: 'Điểm số phải từ 0 đến 10',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    setIsSelfEvaluating(true)
-    try {
-      await reportResponseApi.selfEvaluate(responseId, score)
-      toast({
-        title: 'Thành công',
-        description: 'Tự đánh giá báo cáo thành công',
-      })
-      setSelfEvaluatingResponseId(null)
-      setSelfEvaluationScore('')
-      fetchRequest()
-    } catch (error: any) {
-      toast({
-        title: 'Lỗi',
-        description: error.response?.data?.message || 'Không thể tự đánh giá báo cáo',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsSelfEvaluating(false)
-    }
-  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -729,24 +695,11 @@ export default function ReceivedRequestDetailPage() {
                       <span className="flex items-center gap-1">
                         <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
                         <span className="font-semibold text-yellow-600">
-                          Điểm người gửi: {myResponse.score}/10
+                          Điểm đánh giá: {myResponse.score}/10
                         </span>
                         {myResponse.evaluatedAt && (
                           <span className="text-gray-500 text-xs">
                             ({new Date(myResponse.evaluatedAt).toLocaleDateString('vi-VN')})
-                          </span>
-                        )}
-                      </span>
-                    )}
-                    {myResponse.selfScore !== null && myResponse.selfScore !== undefined && (
-                      <span className="flex items-center gap-1">
-                        <Star className="h-4 w-4 text-blue-500 fill-blue-500" />
-                        <span className="font-semibold text-blue-600">
-                          Điểm tự đánh giá: {myResponse.selfScore}/10
-                        </span>
-                        {myResponse.selfEvaluatedAt && (
-                          <span className="text-gray-500 text-xs">
-                            ({new Date(myResponse.selfEvaluatedAt).toLocaleDateString('vi-VN')})
                           </span>
                         )}
                       </span>
@@ -771,61 +724,6 @@ export default function ReceivedRequestDetailPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Tự đánh giá */}
-            {myResponse.selfScore === null || myResponse.selfScore === undefined ? (
-              <div className="pt-4 border-t">
-                {selfEvaluatingResponseId === myResponse.id ? (
-                  <div className="flex items-center gap-3">
-                    <Input
-                      type="number"
-                      min="0"
-                      max="10"
-                      step="0.1"
-                      placeholder="Nhập điểm tự đánh giá (0-10)"
-                      value={selfEvaluationScore}
-                      onChange={(e) => setSelfEvaluationScore(e.target.value)}
-                      className="w-48"
-                    />
-                    <Button
-                      onClick={() => handleSelfEvaluate(myResponse.id)}
-                      disabled={isSelfEvaluating}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      {isSelfEvaluating ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Đang xử lý...
-                        </>
-                      ) : (
-                        'Xác nhận'
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setSelfEvaluatingResponseId(null)
-                        setSelfEvaluationScore('')
-                      }}
-                    >
-                      Hủy
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      setSelfEvaluatingResponseId(myResponse.id)
-                      setSelfEvaluationScore('')
-                    }}
-                    variant="outline"
-                    className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                  >
-                    <Star className="h-4 w-4 mr-2" />
-                    Tự đánh giá báo cáo
-                  </Button>
-                )}
-              </div>
-            ) : null}
-
             {myResponse.note && (
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="text-sm font-medium text-gray-500 mb-1">Ghi chú:</h4>

@@ -146,8 +146,20 @@ export default function UsersPage() {
         (d) => formData.organizationIds.includes(d.organizationId)
       )
       setFilteredDepartments(filtered)
+      
+      // Reset departmentId nếu department hiện tại không thuộc các cơ quan được chọn
+      if (formData.departmentId) {
+        const isDeptInOrgs = filtered.some(d => d.id.toString() === formData.departmentId)
+        if (!isDeptInOrgs) {
+          setFormData(prev => ({ ...prev, departmentId: '' }))
+        }
+      }
     } else {
       setFilteredDepartments([])
+      // Reset departmentId khi không chọn cơ quan nào
+      if (formData.departmentId) {
+        setFormData(prev => ({ ...prev, departmentId: '' }))
+      }
     }
   }, [formData.organizationIds, departments])
 
@@ -718,13 +730,28 @@ export default function UsersPage() {
                   <SelectItem value="none">
                     Không thuộc phòng ban nào
                   </SelectItem>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id.toString()}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
+                  {formData.organizationIds.length > 0 ? (
+                    // Chỉ hiển thị phòng ban thuộc các cơ quan đã chọn
+                    filteredDepartments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id.toString()}>
+                        {dept.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    // Hiển thị tất cả phòng ban nếu chưa chọn cơ quan nào
+                    departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id.toString()}>
+                        {dept.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
+              {formData.organizationIds.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">
+                  💡 Chọn cơ quan trước để lọc phòng ban
+                </p>
+              )}
               {formData.departmentId && (() => {
                 const selectedDept = departments.find(d => d.id.toString() === formData.departmentId)
                 const orgName = selectedDept ? organizations.find(o => o.id === selectedDept.organizationId)?.name : null

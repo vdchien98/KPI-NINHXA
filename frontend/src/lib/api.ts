@@ -284,5 +284,43 @@ export const commonApi = {
     api.get(`/common/users/by-organization/${organizationId}`),
 };
 
+// Admin Report API
+export const adminReportApi = {
+  getAll: (params?: {
+    search?: string;
+    status?: string;
+    createdById?: number;
+    submittedById?: number;
+    organizationId?: number;
+    departmentId?: number;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.createdById) queryParams.append('createdById', params.createdById.toString());
+    if (params?.submittedById) queryParams.append('submittedById', params.submittedById.toString());
+    if (params?.organizationId) queryParams.append('organizationId', params.organizationId.toString());
+    if (params?.departmentId) queryParams.append('departmentId', params.departmentId.toString());
+    return api.get(`/admin/reports?${queryParams.toString()}`);
+  },
+  getStatistics: () => api.get('/admin/reports/statistics'),
+  updateRequest: (id: number, data: {
+    title: string;
+    description?: string;
+    deadline?: string;
+    status?: string;
+    organizationIds?: number[];
+    departmentIds?: number[];
+  }) => api.put(`/admin/reports/requests/${id}`, data),
+  updateResponse: (id: number, data: {
+    note?: string;
+    score?: number;
+    comment?: string;
+    selfScore?: number;
+    items?: any[];
+  }) => api.put(`/admin/reports/responses/${id}`, data),
+  getResponseById: (id: number) => api.get(`/admin/reports/responses/${id}`),
+};
+
 export default api;
 
