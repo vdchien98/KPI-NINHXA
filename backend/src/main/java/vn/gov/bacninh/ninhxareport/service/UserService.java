@@ -43,6 +43,9 @@ public class UserService {
     
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private ZaloService zaloService;
     
     public List<UserDTO> getAllUsers() {
         // Sử dụng findAllWithRelations để load organizations và department
@@ -239,6 +242,53 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với id: " + id));
         
         userRepository.delete(user);
+    }
+
+    /**
+     * Load Zalo User ID từ số điện thoại và cập nhật vào user
+     * 
+     * @param userId ID của user
+     * @return UserDTO đã được cập nhật
+     */
+    @Transactional
+    public UserDTO loadZaloUserId(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng với id: " + userId));
+        
+        String zaloUserId = getOrFetchZaloUserId(user);
+        if (zaloUserId == null) {
+            throw new IllegalStateException("Không thể lấy Zalo User ID từ số điện thoại: " + user.getPhone());
+        }
+        
+        return UserDTO.fromEntity(user);
+    }
+
+    /**
+     * Lấy hoặc tạo Zalo User ID cho user
+     * Logic: Nếu DB đã có zalo_user_id thì dùng luôn, nếu chưa có thì dùng số điện thoại để lấy và lưu vào DB
+     * 
+     * @param user User cần lấy zalo_user_id
+     * @return Zalo User ID nếu có thể lấy được, null nếu không thể
+     */
+    @Transactional
+    public String getOrFetchZaloUserId(User user) {
+        // Nếu đã có zalo_user_id trong DB thì dùng luôn
+        if (user.getZaloUserId() != null && !user.getZaloUserId().trim().isEmpty()) {
+            return user.getZaloUserId();
+        }
+        
+        // Nếu chưa có zalo_user_id nhưng có số điện thoại, thì lấy từ Zalo API
+        if (user.getPhone() != null && !user.getPhone().trim().isEmpty()) {
+            String zaloUserId = zaloService.getUserIdByPhone(user.getPhone());
+            if (zaloUserId != null && !zaloUserId.trim().isEmpty()) {
+                // Lưu vào DB để lần sau dùng
+                user.setZaloUserId(zaloUserId);
+                userRepository.save(user);
+                return zaloUserId;
+            }
+        }
+        
+        return null;
     }
 }
 

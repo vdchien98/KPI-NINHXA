@@ -68,5 +68,15 @@ public class UserController {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
+    
+    @PostMapping("/{id}/load-zalo-user-id")
+    public ResponseEntity<ApiResponse<UserDTO>> loadZaloUserId(@PathVariable Long id) {
+        try {
+            UserDTO user = userService.loadZaloUserId(id);
+            return ResponseEntity.ok(ApiResponse.success("Lấy Zalo User ID thành công", user));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
 }
 

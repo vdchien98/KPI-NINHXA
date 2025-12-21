@@ -94,6 +94,8 @@ CREATE TABLE IF NOT EXISTS users (
     representative_type VARCHAR(20) COMMENT 'Loại đại diện: organization, department, hoặc NULL (không phải đại diện)',
     is_active BOOLEAN DEFAULT TRUE,
     last_login TIMESTAMP NULL,
+    login_method VARCHAR(32) DEFAULT 'SSO',
+    zalo_user_id VARCHAR(100) COMMENT 'Zalo User ID để gửi thông báo',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL,
@@ -229,6 +231,22 @@ CREATE TABLE IF NOT EXISTS report_request_users (
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 COMMENT='Bảng liên kết yêu cầu báo cáo với người dùng';
+
+-- ============================================
+-- 13. Bảng Zalo Access Token (lưu token OAuth)
+-- ============================================
+CREATE TABLE IF NOT EXISTS zalo_access_tokens (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    access_token TEXT NOT NULL COMMENT 'Access token từ Zalo OAuth',
+    refresh_token TEXT NOT NULL COMMENT 'Refresh token từ Zalo OAuth',
+    token_type VARCHAR(50) COMMENT 'Loại token (thường là Bearer)',
+    scope VARCHAR(500) COMMENT 'Quyền truy cập',
+    expires_at TIMESTAMP NOT NULL COMMENT 'Thời gian hết hạn',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Thời gian tạo',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Thời gian cập nhật',
+    INDEX idx_expires_at (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Bảng lưu Zalo OAuth access token';
 
 -- ============================================
 -- Chèn dữ liệu mặc định

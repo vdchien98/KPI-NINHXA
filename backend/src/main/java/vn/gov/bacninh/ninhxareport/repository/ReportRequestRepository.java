@@ -33,5 +33,21 @@ public interface ReportRequestRepository extends JpaRepository<ReportRequest, Lo
            "WHERE u.id = :userId " +
            "ORDER BY r.createdAt DESC")
     List<ReportRequest> findReceivedByUserId(@Param("userId") Long userId);
+    
+    /**
+     * Tìm các report requests đang pending hoặc in_progress và chưa quá deadline
+     * Fetch eager các collections để tránh LazyInitializationException
+     */
+    @Query("SELECT DISTINCT r FROM ReportRequest r " +
+           "LEFT JOIN FETCH r.targetUsers " +
+           "LEFT JOIN FETCH r.targetOrganizations " +
+           "LEFT JOIN FETCH r.targetDepartments " +
+           "WHERE r.status IN :statuses " +
+           "AND r.deadline > :now " +
+           "ORDER BY r.deadline ASC")
+    List<ReportRequest> findActiveRequestsBeforeDeadline(
+        @Param("statuses") List<ReportRequest.ReportRequestStatus> statuses,
+        @Param("now") java.time.LocalDateTime now
+    );
 }
 

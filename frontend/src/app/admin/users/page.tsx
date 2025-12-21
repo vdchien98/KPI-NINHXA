@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Users, Loader2, Search, Mail, Phone } from 'lucide-react'
+import { Plus, Pencil, Trash2, Users, Loader2, Search, Mail, Phone, Key } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -58,6 +58,7 @@ interface User {
   position?: { id: number; name: string }
   representativeType?: string // 'organization', 'department', or null
   loginMethod?: string // 'SSO' or 'PASSWORD'
+  zaloUserId?: string // Zalo User ID
   isActive: boolean
   createdAt: string
 }
@@ -110,6 +111,7 @@ export default function UsersPage() {
     isActive: true,
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loadingZaloUserId, setLoadingZaloUserId] = useState<number | null>(null)
 
   const fetchData = async () => {
     try {
@@ -164,23 +166,61 @@ export default function UsersPage() {
   }, [formData.organizationIds, departments])
 
 
-  const handleOpenDialog = (user?: User) => {
+  const handleOpenDialog = async (user?: User) => {
     if (user) {
-      setSelectedUser(user)
-      // Sử dụng representativeType từ user data
-      setFormData({
-        email: user.email,
-        password: '',
-        fullName: user.fullName,
-        phone: user.phone || '',
-        roleId: user.role?.id.toString() || '',
-        representativeType: (user.representativeType || '') as 'organization' | 'department' | '',
-        organizationIds: user.organizations?.map(o => o.id) || [],
-        departmentId: user.department?.id.toString() || '',
-        positionId: user.position?.id.toString() || '',
-        loginMethod: (user.loginMethod || 'SSO') as 'SSO' | 'PASSWORD',
-        isActive: user.isActive,
-      })
+      // Fetch latest user data to get updated zaloUserId
+      try {
+        const res = await userApi.getById(user.id)
+        if (res.data.success) {
+          const updatedUser = res.data.data
+          setSelectedUser(updatedUser)
+          setFormData({
+            email: updatedUser.email,
+            password: '',
+            fullName: updatedUser.fullName,
+            phone: updatedUser.phone || '',
+            roleId: updatedUser.role?.id.toString() || '',
+            representativeType: (updatedUser.representativeType || '') as 'organization' | 'department' | '',
+            organizationIds: updatedUser.organizations?.map((o: { id: number }) => o.id) || [],
+            departmentId: updatedUser.department?.id.toString() || '',
+            positionId: updatedUser.position?.id.toString() || '',
+            loginMethod: (updatedUser.loginMethod || 'SSO') as 'SSO' | 'PASSWORD',
+            isActive: updatedUser.isActive,
+          })
+        } else {
+          // Fallback to original user if fetch fails
+          setSelectedUser(user)
+          setFormData({
+            email: user.email,
+            password: '',
+            fullName: user.fullName,
+            phone: user.phone || '',
+            roleId: user.role?.id.toString() || '',
+            representativeType: (user.representativeType || '') as 'organization' | 'department' | '',
+            organizationIds: user.organizations?.map(o => o.id) || [],
+            departmentId: user.department?.id.toString() || '',
+            positionId: user.position?.id.toString() || '',
+            loginMethod: (user.loginMethod || 'SSO') as 'SSO' | 'PASSWORD',
+            isActive: user.isActive,
+          })
+        }
+      } catch {
+        // Fallback to original user if fetch fails
+        setSelectedUser(user)
+        setFormData({
+          email: user.email,
+          password: '',
+          fullName: user.fullName,
+          phone: user.phone || '',
+          roleId: user.role?.id.toString() || '',
+          representativeType: (user.representativeType || '') as 'organization' | 'department' | '',
+          organizationIds: user.organizations?.map(o => o.id) || [],
+          departmentId: user.department?.id.toString() || '',
+          positionId: user.position?.id.toString() || '',
+          loginMethod: (user.loginMethod || 'SSO') as 'SSO' | 'PASSWORD',
+          isActive: user.isActive,
+        })
+      }
     } else {
       setSelectedUser(null)
       setFormData({
@@ -203,6 +243,31 @@ export default function UsersPage() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false)
     setSelectedUser(null)
+  }
+
+  const handleLoadZaloUserId = async (userId: number) => {
+    try {
+      setLoadingZaloUserId(userId)
+      const res = await userApi.loadZaloUserId(userId)
+      if (res.data.success) {
+        toast({
+          title: 'Thành công',
+          description: 'Đã lấy Zalo User ID thành công',
+        })
+        // Update user in list
+        setUsers(users.map(u => u.id === userId ? res.data.data : u))
+      } else {
+        throw new Error(res.data.message || 'Không thể lấy Zalo User ID')
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Lỗi',
+        description: error.response?.data?.message || error.message || 'Không thể lấy Zalo User ID',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoadingZaloUserId(null)
+    }
   }
 
   const handleSubmit = async () => {
@@ -484,6 +549,22 @@ export default function UsersPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          {user.phone && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleLoadZaloUserId(user.id)}
+                              disabled={loadingZaloUserId === user.id}
+                              className="hover:bg-purple-50 hover:text-purple-600"
+                              title="Load Zalo User ID"
+                            >
+                              {loadingZaloUserId === user.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Key className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -789,6 +870,25 @@ export default function UsersPage() {
                 onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
               />
             </div>
+            
+            {/* Zalo User ID - Read only, chỉ hiển thị khi có selectedUser */}
+            {selectedUser && (
+              <div className="space-y-2">
+                <Label htmlFor="zaloUserId">Zalo User ID</Label>
+                <Input
+                  id="zaloUserId"
+                  value={selectedUser.zaloUserId || ''}
+                  disabled
+                  placeholder="Chưa có Zalo User ID"
+                  className="bg-gray-50"
+                />
+                <p className="text-xs text-gray-500">
+                  {selectedUser.zaloUserId 
+                    ? 'Zalo User ID đã được lấy từ số điện thoại'
+                    : 'Sử dụng nút Key trong danh sách để lấy Zalo User ID từ số điện thoại'}
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleCloseDialog}>

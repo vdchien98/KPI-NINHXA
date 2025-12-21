@@ -3,6 +3,7 @@ package vn.gov.bacninh.ninhxareport.controller;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -13,10 +14,12 @@ import vn.gov.bacninh.ninhxareport.dto.ReportRequestDTO;
 import vn.gov.bacninh.ninhxareport.dto.ReportRequestHistoryDTO;
 import vn.gov.bacninh.ninhxareport.entity.User;
 import vn.gov.bacninh.ninhxareport.repository.UserRepository;
+import vn.gov.bacninh.ninhxareport.service.ReportDeadlineNotificationService;
 import vn.gov.bacninh.ninhxareport.service.ReportRequestService;
 import vn.gov.bacninh.ninhxareport.service.ReportWordExportService;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/report-requests")
@@ -30,6 +33,9 @@ public class ReportRequestController {
     
     @Autowired
     private ReportWordExportService wordExportService;
+    
+    @Autowired
+    private ReportDeadlineNotificationService deadlineNotificationService;
     
     private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -153,6 +159,23 @@ public class ReportRequestController {
                     .body(resource);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    /**
+     * API để admin chủ động gửi lại thông báo Zalo cho báo cáo sắp đến hạn
+     */
+    @PostMapping("/{id}/send-deadline-notification")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Object>> sendDeadlineNotification(@PathVariable Long id) {
+        try {
+            int successCount = deadlineNotificationService.sendNotificationManually(id);
+            return ResponseEntity.ok(ApiResponse.success(
+                String.format("Đã gửi thông báo cho %d người nhận", successCount),
+                Map.of("sentCount", successCount)
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
 }

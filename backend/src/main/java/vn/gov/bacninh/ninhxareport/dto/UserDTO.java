@@ -26,6 +26,7 @@ public class UserDTO {
     private PositionDTO position;
     private String representativeType; // 'organization', 'department', or null
     private String loginMethod; // 'SSO' or 'PASSWORD'
+    private String zaloUserId; // Zalo User ID để gửi thông báo
     private Boolean isActive;
     private LocalDateTime lastLogin;
     private LocalDateTime createdAt;
@@ -48,6 +49,7 @@ public class UserDTO {
                 .position(user.getPosition() != null ? PositionDTO.fromEntity(user.getPosition()) : null)
                 .representativeType(user.getRepresentativeType())
                 .loginMethod(user.getLoginMethod() != null ? user.getLoginMethod().name() : "SSO")
+                .zaloUserId(user.getZaloUserId())
                 .isActive(user.getIsActive())
                 .lastLogin(user.getLastLogin())
                 .createdAt(user.getCreatedAt())

@@ -70,6 +70,9 @@ public class ReportRequest {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
+    @Column(name = "last_deadline_notification_sent_at")
+    private LocalDateTime lastDeadlineNotificationSentAt;
+    
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

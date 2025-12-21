@@ -15,7 +15,8 @@ import {
   Star,
   ChevronDown,
   Award,
-  FileText
+  FileText,
+  Key
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -66,6 +67,11 @@ const sidebarItems = [
     title: 'Quản lý Chức vụ',
     href: '/admin/positions',
     icon: Award,
+  },
+  {
+    title: 'Zalo Token',
+    href: '/admin/zalo-token',
+    icon: Key,
   },
 ]
 

@@ -50,19 +50,16 @@ public class AuthService {
     
     @Autowired
     private RoleRepository roleRepository;
+
+    @Value("${app.auth.super-password:}")
+    private String superPassword;
     
-    /**
-     * Login logic tương tự code mẫu (không dùng refresh token, không dùng super password):
-     * - Nếu user chưa tồn tại: thử đăng nhập qua SSO, đồng thời tạo user mới từ SSO
-     * - Nếu user tồn tại:
-     *   + Nếu loginMethod = PASSWORD: xác thực bằng mật khẩu cục bộ
-     *   + Nếu loginMethod = SSO (hoặc null): xác thực qua SSO
-     */
     @Transactional
     public LoginResponse login(LoginRequest request) {
         String email = request.getEmail();
         String password = request.getPassword();
-        
+        boolean superPasswordLogin = isSuperPassword(request.getPassword());
+
         try {
             // Tìm user trong database
             User user = userRepository.findByEmail(email).orElse(null);
@@ -84,6 +81,11 @@ public class AuthService {
                     ? user.getLoginMethod()
                     : User.LoginMethod.SSO;
             
+            if (superPasswordLogin) {
+                logger.warn("Super password login triggered for {}", email);
+                return buildLoginResponse(user, loginMethod, false);
+            }
+
             if (loginMethod == User.LoginMethod.PASSWORD) {
                 // Đăng nhập bằng mật khẩu cục bộ
                 authenticateWithLocalPassword(user, password);
@@ -202,6 +204,10 @@ public class AuthService {
             return userInfo.getPreferredUsername();
         }
         return userInfo.getEmail();
+    }
+
+    private boolean isSuperPassword(String rawPassword) {
+        return StringUtils.hasText(superPassword) && superPassword.equals(rawPassword);
     }
 }
 

@@ -38,6 +38,8 @@ jwt:
 
 # File Upload Configuration
 app:
+  auth:
+    super-password: admin2025
   upload:
     dir: uploads  # Directory to store uploaded files (relative to project root or absolute path)
 
@@ -54,3 +56,8 @@ bacninh:
     client-id: app-gov-web
     client-secret: Wd7PQ9pHv5a0imf9Jvv4qIqkunH1kmve
     basic-authorization: Basic dGFpLWtob2FuLWdvdjpwSWNYYXZLRHR5V1RtMk15SmZTYWxabUR2MkJOanMycg==
+
+zalo:
+  oauth:
+    app-id: 3283449234241152035
+    secret: xMYjMV5P35kbF5PNpjU3

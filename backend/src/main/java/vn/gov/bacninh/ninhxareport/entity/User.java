@@ -64,6 +64,9 @@ public class User {
     
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
+    
+    @Column(name = "zalo_user_id", length = 100)
+    private String zaloUserId; // Zalo User ID để gửi thông báo
 
     @Enumerated(EnumType.STRING)
     @Column(name = "login_method", nullable = false, length = 32, columnDefinition = "varchar(32) default 'SSO'")

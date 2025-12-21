@@ -100,6 +100,7 @@ export const userApi = {
     isActive?: boolean;
   }) => api.put(`/admin/users/${id}`, data),
   delete: (id: number) => api.delete(`/admin/users/${id}`),
+  loadZaloUserId: (id: number) => api.post(`/admin/users/${id}/load-zalo-user-id`),
 };
 
 // Organization API
@@ -320,6 +321,14 @@ export const adminReportApi = {
     items?: any[];
   }) => api.put(`/admin/reports/responses/${id}`, data),
   getResponseById: (id: number) => api.get(`/admin/reports/responses/${id}`),
+};
+
+// Zalo OAuth API
+export const zaloOAuthApi = {
+  init: (refreshToken: string) => api.post('/admin/zalo/oauth/init', { refreshToken }),
+  getInfo: () => api.get('/admin/zalo/oauth/info'),
+  getStatus: () => api.get('/admin/zalo/oauth/status'),
+  refresh: () => api.post('/admin/zalo/oauth/refresh'),
 };
 
 export default api;
