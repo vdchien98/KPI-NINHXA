@@ -180,6 +180,21 @@ public class ReportResponseController {
         }
     }
     
+    /**
+     * Lấy thống kê điểm báo cáo của chính mình
+     */
+    @GetMapping("/my-statistics")
+    public ResponseEntity<ApiResponse<vn.gov.bacninh.ninhxareport.dto.ReportStatisticsDTO>> getMyStatistics() {
+        try {
+            User currentUser = getCurrentUser();
+            vn.gov.bacninh.ninhxareport.dto.ReportStatisticsDTO statistics = 
+                    reportResponseService.getReportStatisticsByUser(currentUser.getId());
+            return ResponseEntity.ok(ApiResponse.success(statistics));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
     @GetMapping("/files/**")
     public ResponseEntity<Resource> downloadFile(HttpServletRequest request) {
         try {

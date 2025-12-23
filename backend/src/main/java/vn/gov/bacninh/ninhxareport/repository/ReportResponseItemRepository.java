@@ -10,5 +10,8 @@ import java.util.List;
 public interface ReportResponseItemRepository extends JpaRepository<ReportResponseItem, Long> {
     
     List<ReportResponseItem> findByReportResponseIdOrderByDisplayOrderAsc(Long responseId);
+    
+    @org.springframework.data.jpa.repository.Query("SELECT i FROM ReportResponseItem i WHERE i.reportResponse.id IN :responseIds ORDER BY i.reportResponse.id, i.displayOrder ASC")
+    List<ReportResponseItem> findByReportResponseIdInOrderByDisplayOrderAsc(@org.springframework.data.repository.query.Param("responseIds") List<Long> responseIds);
 }
 

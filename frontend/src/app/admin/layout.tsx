@@ -44,6 +44,11 @@ const sidebarItems = [
     icon: FileText,
   },
   {
+    title: 'Thống kê Điểm Báo cáo',
+    href: '/admin/reports/statistics',
+    icon: Star,
+  },
+  {
     title: 'Quản lý Role',
     href: '/admin/roles',
     icon: Shield,

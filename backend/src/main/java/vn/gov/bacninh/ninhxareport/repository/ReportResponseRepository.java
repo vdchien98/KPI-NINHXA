@@ -22,5 +22,24 @@ public interface ReportResponseRepository extends JpaRepository<ReportResponse, 
             @Param("userId") Long userId);
     
     boolean existsByReportRequestIdAndSubmittedById(Long requestId, Long userId);
+    
+    @Query("SELECT DISTINCT r FROM ReportResponse r " +
+           "JOIN FETCH r.reportRequest req " +
+           "JOIN FETCH req.createdBy " +
+           "JOIN FETCH r.submittedBy u " +
+           "LEFT JOIN FETCH u.department " +
+           "LEFT JOIN FETCH r.evaluatedBy " +
+           "WHERE r.submittedBy.id = :userId " +
+           "ORDER BY r.submittedAt DESC")
+    List<ReportResponse> findBySubmittedByIdWithRelations(@Param("userId") Long userId);
+    
+    @Query("SELECT DISTINCT r FROM ReportResponse r " +
+           "JOIN FETCH r.reportRequest req " +
+           "JOIN FETCH req.createdBy " +
+           "JOIN FETCH r.submittedBy u " +
+           "LEFT JOIN FETCH u.department " +
+           "LEFT JOIN FETCH r.evaluatedBy " +
+           "ORDER BY r.submittedAt DESC")
+    List<ReportResponse> findAllWithRelations();
 }
 

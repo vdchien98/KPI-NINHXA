@@ -647,5 +647,473 @@ public class ReportResponseService {
                 .map(ReportResponseCommentDTO::fromEntity)
                 .collect(Collectors.toList());
     }
+    
+    /**
+     * Lấy thống kê báo cáo cho một user cụ thể
+     * Logic cốt lõi: Duyệt từng REQUEST được giao cho user, kiểm tra trạng thái và response tương ứng
+     */
+    public ReportStatisticsDTO getReportStatisticsByUser(Long userId) {
+        User user = userRepository.findByIdWithRelations(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy user với id: " + userId));
+        
+        // CỐT LÕI: Lấy tất cả REQUESTS được giao cho user này (qua targetUsers, targetDepartments, targetOrganizations)
+        List<Long> orgIds = user.getOrganizations() != null ? 
+                user.getOrganizations().stream().map(org -> org.getId()).collect(Collectors.toList()) : 
+                new ArrayList<>();
+        List<Long> deptIds = new ArrayList<>();
+        if (user.getDepartment() != null) {
+            deptIds.add(user.getDepartment().getId());
+        }
+        
+        List<ReportRequest> assignedRequests = reportRequestRepository.findRequestsForUser(orgIds, deptIds, userId);
+        
+        // Lấy responses để tra cứu (chỉ để biết request nào đã nộp và đã đánh giá)
+        List<ReportResponse> responses = reportResponseRepository.findBySubmittedByIdWithRelations(userId);
+        
+        return buildStatistics(assignedRequests, responses, user);
+    }
+    
+    /**
+     * Lấy thống kê báo cáo cho tất cả users (admin)
+     */
+    public ReportStatisticsDTO getAllReportStatistics() {
+        // Lấy tất cả requests
+        List<ReportRequest> allRequests = reportRequestRepository.findAllOrderByCreatedAtDesc();
+        
+        // Lấy tất cả responses đã nộp và đã đánh giá
+        List<ReportResponse> responses = reportResponseRepository.findAllWithRelations();
+        
+        return buildStatisticsForAllUsers(allRequests, responses);
+    }
+    
+    /**
+     * Xây dựng DTO thống kê cho một user cụ thể
+     * Logic cốt lõi: Duyệt từng REQUEST được giao, kiểm tra trạng thái và response tương ứng
+     * Bao gồm cả các request quá hạn nhưng chưa nộp (không có response)
+     */
+    private ReportStatisticsDTO buildStatistics(List<ReportRequest> assignedRequests, 
+                                                 List<ReportResponse> responses, 
+                                                 User user) {
+        List<ReportStatisticsDTO.ReportStatisticItemDTO> reportItems = new ArrayList<>();
+        int stt = 1;
+        int onTimeCount = 0;
+        int overdueCount = 0;
+        double totalScore = 0;
+        int scoredCount = 0;
+        
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        
+        // Load items cho tất cả responses để tránh lazy loading và đảm bảo mỗi response chỉ có 1 lần
+        if (!responses.isEmpty()) {
+            List<Long> responseIds = responses.stream()
+                    .map(ReportResponse::getId)
+                    .collect(Collectors.toList());
+            
+            // Load tất cả items theo response IDs trong một query
+            List<ReportResponseItem> allItems = reportResponseItemRepository.findByReportResponseIdInOrderByDisplayOrderAsc(responseIds);
+            
+            // Group items theo response ID
+            java.util.Map<Long, List<ReportResponseItem>> itemsMap = allItems.stream()
+                    .collect(Collectors.groupingBy(item -> item.getReportResponse().getId()));
+            
+            // Set items vào responses
+            for (ReportResponse response : responses) {
+                List<ReportResponseItem> items = itemsMap.getOrDefault(response.getId(), new ArrayList<>());
+                response.getItems().clear();
+                response.getItems().addAll(items);
+            }
+        }
+        
+        // Tạo map để tra cứu response theo requestId (chỉ để biết request nào đã nộp và đã đánh giá)
+        java.util.Map<Long, ReportResponse> responseMap = responses.stream()
+                .filter(r -> r.getScore() != null) // Chỉ lấy các response đã được đánh giá
+                .collect(Collectors.toMap(
+                    r -> r.getReportRequest().getId(),
+                    r -> r,
+                    (r1, r2) -> r1 // Nếu có nhiều response cho cùng request, lấy cái đầu tiên
+                ));
+        
+        // Lấy danh sách organizations của user
+        List<OrganizationDTO> organizations = user.getOrganizations() != null ?
+                user.getOrganizations().stream()
+                        .map(OrganizationDTO::fromEntity)
+                        .collect(Collectors.toList()) : new ArrayList<>();
+        
+        // CỐT LÕI: Duyệt từng REQUEST được giao cho user
+        for (ReportRequest request : assignedRequests) {
+            ReportResponse response = responseMap.get(request.getId());
+            
+            if (response != null) {
+                // Đã nộp và đã được đánh giá - hiển thị trong bảng
+                User submittedBy = response.getSubmittedBy();
+                
+                // Xác định trạng thái (Đúng hạn / Quá hạn)
+                String status;
+                if (response.getSubmittedAt() != null && request.getDeadline() != null) {
+                    if (response.getSubmittedAt().isBefore(request.getDeadline()) || 
+                        response.getSubmittedAt().isEqual(request.getDeadline())) {
+                        status = "Đúng hạn";
+                        onTimeCount++;
+                    } else {
+                        status = "Quá hạn";
+                        overdueCount++;
+                    }
+                } else {
+                    status = "Chưa xác định";
+                }
+                
+                // Tạo link tài liệu kiểm chứng từ response items
+                String documentLink = buildDocumentLink(response);
+                List<ReportStatisticsDTO.DocumentFileDTO> documentFiles = buildDocumentFiles(response);
+                
+                ReportStatisticsDTO.ReportStatisticItemDTO item = ReportStatisticsDTO.ReportStatisticItemDTO.builder()
+                        .id(response.getId())
+                        .stt(stt++)
+                        .reportName(request.getTitle())
+                        .reportAuthor(UserDTO.fromEntity(submittedBy))
+                        .department(user.getDepartment() != null ? 
+                                DepartmentDTO.fromEntity(user.getDepartment()) : null)
+                        .organizations(organizations)
+                        .score(response.getScore())
+                        .reviewer(response.getEvaluatedBy() != null ? 
+                                UserDTO.fromEntity(response.getEvaluatedBy()) : null)
+                        .submissionDate(response.getSubmittedAt())
+                        .status(status)
+                        .documentLink(documentLink)
+                        .documentFiles(documentFiles)
+                        .reportRequestId(request.getId())
+                        .build();
+                
+                reportItems.add(item);
+                
+                // Tính tổng điểm
+                totalScore += response.getScore();
+                scoredCount++;
+            } else {
+                // Chưa nộp - chỉ hiển thị nếu quá hạn
+                if (request.getDeadline() != null && request.getDeadline().isBefore(now)) {
+                    // Quá hạn nhưng chưa nộp - hiển thị trong bảng với trạng thái "Quá hạn"
+                    overdueCount++;
+                    
+                    ReportStatisticsDTO.ReportStatisticItemDTO item = ReportStatisticsDTO.ReportStatisticItemDTO.builder()
+                            .id(null) // Không có response ID
+                            .stt(stt++)
+                            .reportName(request.getTitle())
+                            .reportAuthor(UserDTO.fromEntity(user))
+                            .department(user.getDepartment() != null ? 
+                                    DepartmentDTO.fromEntity(user.getDepartment()) : null)
+                            .organizations(organizations)
+                            .score(null) // Chưa có điểm vì chưa nộp
+                            .reviewer(null) // Chưa có người chấm
+                            .submissionDate(request.getDeadline()) // Dùng deadline làm ngày giao báo cáo
+                            .status("Quá hạn")
+                            .documentLink("-") // Chưa có tài liệu
+                            .documentFiles(new ArrayList<>()) // Chưa có file
+                            .reportRequestId(request.getId())
+                            .build();
+                    
+                    reportItems.add(item);
+                    
+                    // Tính điểm trung bình: báo cáo quá hạn chưa nộp được tính là 0 điểm
+                    // Không cần cộng vào totalScore vì đã là 0, nhưng cần tăng scoredCount để tính vào mẫu số
+                    scoredCount++;
+                }
+                // Chưa đến hạn chưa nộp - không hiển thị
+            }
+        }
+        
+        // Tính điểm trung bình: bao gồm cả các báo cáo quá hạn chưa nộp (tính là 0 điểm)
+        double averageScore = scoredCount > 0 ? totalScore / scoredCount : 0;
+        
+        // Xác định xếp loại
+        String rating = calculateRating(averageScore);
+        
+        ReportStatisticsDTO.SummaryDTO summary = ReportStatisticsDTO.SummaryDTO.builder()
+                .totalReports(reportItems.size())
+                .onTimeReports(onTimeCount)
+                .overdueReports(overdueCount)
+                .averageScore(averageScore)
+                .rating(rating)
+                .build();
+        
+        return ReportStatisticsDTO.builder()
+                .reports(reportItems)
+                .summary(summary)
+                .build();
+    }
+    
+    /**
+     * Xây dựng DTO thống kê cho tất cả users (admin)
+     */
+    private ReportStatisticsDTO buildStatisticsForAllUsers(List<ReportRequest> allRequests, 
+                                                           List<ReportResponse> responses) {
+        List<ReportStatisticsDTO.ReportStatisticItemDTO> reportItems = new ArrayList<>();
+        int stt = 1;
+        int onTimeCount = 0;
+        int overdueCount = 0;
+        double totalScore = 0;
+        int scoredCount = 0;
+        
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        
+        // Load items cho tất cả responses để tránh lazy loading và đảm bảo mỗi response chỉ có 1 lần
+        if (!responses.isEmpty()) {
+            List<Long> responseIds = responses.stream()
+                    .map(ReportResponse::getId)
+                    .collect(Collectors.toList());
+            
+            // Load tất cả items theo response IDs trong một query
+            List<ReportResponseItem> allItems = reportResponseItemRepository.findByReportResponseIdInOrderByDisplayOrderAsc(responseIds);
+            
+            // Group items theo response ID
+            java.util.Map<Long, List<ReportResponseItem>> itemsMap = allItems.stream()
+                    .collect(Collectors.groupingBy(item -> item.getReportResponse().getId()));
+            
+            // Set items vào responses
+            for (ReportResponse response : responses) {
+                List<ReportResponseItem> items = itemsMap.getOrDefault(response.getId(), new ArrayList<>());
+                response.getItems().clear();
+                response.getItems().addAll(items);
+            }
+        }
+        
+        // Tạo map để tra cứu response theo requestId và userId
+        java.util.Map<String, ReportResponse> responseMap = new java.util.HashMap<>();
+        for (ReportResponse response : responses) {
+            if (response.getSubmittedBy() != null && response.getScore() != null) {
+                String key = response.getReportRequest().getId() + "_" + response.getSubmittedBy().getId();
+                responseMap.put(key, response);
+            }
+        }
+        
+        // Xử lý các response đã nộp và đã đánh giá
+        for (ReportResponse response : responses) {
+            if (response.getSubmittedBy() == null || response.getScore() == null) {
+                continue;
+            }
+            
+            ReportRequest request = response.getReportRequest();
+            User submittedBy = response.getSubmittedBy();
+            
+            // Xác định trạng thái (Đúng hạn / Quá hạn)
+            String status;
+            if (response.getSubmittedAt() != null && request.getDeadline() != null) {
+                if (response.getSubmittedAt().isBefore(request.getDeadline()) || 
+                    response.getSubmittedAt().isEqual(request.getDeadline())) {
+                    status = "Đúng hạn";
+                    onTimeCount++;
+                } else {
+                    status = "Quá hạn";
+                    overdueCount++;
+                }
+            } else {
+                status = "Chưa xác định";
+            }
+            
+            // Lấy danh sách organizations của user
+            User userWithOrgs = userRepository.findByIdWithRelations(submittedBy.getId())
+                    .orElse(submittedBy);
+            List<OrganizationDTO> organizations = userWithOrgs.getOrganizations() != null ?
+                    userWithOrgs.getOrganizations().stream()
+                            .map(OrganizationDTO::fromEntity)
+                            .collect(Collectors.toList()) : new ArrayList<>();
+            
+            // Tạo link tài liệu kiểm chứng từ response items
+            String documentLink = buildDocumentLink(response);
+            List<ReportStatisticsDTO.DocumentFileDTO> documentFiles = buildDocumentFiles(response);
+            
+            ReportStatisticsDTO.ReportStatisticItemDTO item = ReportStatisticsDTO.ReportStatisticItemDTO.builder()
+                    .id(response.getId())
+                    .stt(stt++)
+                    .reportName(request.getTitle())
+                    .reportAuthor(UserDTO.fromEntity(submittedBy))
+                    .department(submittedBy.getDepartment() != null ? 
+                            DepartmentDTO.fromEntity(submittedBy.getDepartment()) : null)
+                    .organizations(organizations)
+                    .score(response.getScore())
+                    .reviewer(response.getEvaluatedBy() != null ? 
+                            UserDTO.fromEntity(response.getEvaluatedBy()) : null)
+                    .submissionDate(response.getSubmittedAt())
+                    .status(status)
+                    .documentLink(documentLink)
+                    .documentFiles(documentFiles)
+                    .reportRequestId(request.getId())
+                    .build();
+            
+            reportItems.add(item);
+            
+            // Tính tổng điểm
+            totalScore += response.getScore();
+            scoredCount++;
+        }
+        
+        // Xử lý các request chưa nộp - hiển thị trong bảng
+        for (ReportRequest request : allRequests) {
+            // Lấy tất cả user được giao request này
+            java.util.Set<Long> assignedUserIds = new java.util.HashSet<>();
+            java.util.Map<Long, User> userMap = new java.util.HashMap<>();
+            
+            // Lấy user IDs từ targetUsers
+            if (request.getTargetUsers() != null) {
+                for (User targetUser : request.getTargetUsers()) {
+                    assignedUserIds.add(targetUser.getId());
+                    userMap.put(targetUser.getId(), targetUser);
+                }
+            }
+            
+            // Lấy user IDs từ targetDepartments
+            if (request.getTargetDepartments() != null) {
+                for (Department dept : request.getTargetDepartments()) {
+                    List<User> deptUsers = userRepository.findByDepartmentId(dept.getId());
+                    for (User deptUser : deptUsers) {
+                        assignedUserIds.add(deptUser.getId());
+                        if (!userMap.containsKey(deptUser.getId())) {
+                            userMap.put(deptUser.getId(), deptUser);
+                        }
+                    }
+                }
+            }
+            
+            // Lấy user IDs từ targetOrganizations
+            if (request.getTargetOrganizations() != null) {
+                for (Organization org : request.getTargetOrganizations()) {
+                    List<User> orgUsers = userRepository.findByOrganizationId(org.getId());
+                    for (User orgUser : orgUsers) {
+                        assignedUserIds.add(orgUser.getId());
+                        if (!userMap.containsKey(orgUser.getId())) {
+                            userMap.put(orgUser.getId(), orgUser);
+                        }
+                    }
+                }
+            }
+            
+            // Kiểm tra từng user được giao
+            for (Long userId : assignedUserIds) {
+                String key = request.getId() + "_" + userId;
+                ReportResponse response = responseMap.get(key);
+                
+                if (response == null) {
+                    // Chưa nộp - chỉ hiển thị nếu quá hạn
+                    if (request.getDeadline() != null && request.getDeadline().isBefore(now)) {
+                        // Quá hạn nhưng chưa nộp - hiển thị trong bảng với trạng thái "Quá hạn"
+                        overdueCount++;
+                        
+                        User user = userRepository.findByIdWithRelations(userId)
+                                .orElse(userMap.get(userId));
+                        if (user == null) continue;
+                        
+                        List<OrganizationDTO> organizations = user.getOrganizations() != null ?
+                                user.getOrganizations().stream()
+                                        .map(OrganizationDTO::fromEntity)
+                                        .collect(Collectors.toList()) : new ArrayList<>();
+                        
+                        ReportStatisticsDTO.ReportStatisticItemDTO item = ReportStatisticsDTO.ReportStatisticItemDTO.builder()
+                                .id(null) // Không có response ID
+                                .stt(stt++)
+                                .reportName(request.getTitle())
+                                .reportAuthor(UserDTO.fromEntity(user))
+                                .department(user.getDepartment() != null ? 
+                                        DepartmentDTO.fromEntity(user.getDepartment()) : null)
+                                .organizations(organizations)
+                                .score(null) // Chưa có điểm vì chưa nộp
+                                .reviewer(null) // Chưa có người chấm
+                                .submissionDate(request.getDeadline()) // Dùng deadline làm ngày giao báo cáo
+                                .status("Quá hạn")
+                                .documentLink("-") // Chưa có tài liệu
+                                .documentFiles(new ArrayList<>()) // Chưa có file
+                                .reportRequestId(request.getId())
+                                .build();
+                        
+                        reportItems.add(item);
+                        
+                        // Tính điểm trung bình: báo cáo quá hạn chưa nộp được tính là 0 điểm
+                        // Không cần cộng vào totalScore vì đã là 0, nhưng cần tăng scoredCount để tính vào mẫu số
+                        scoredCount++;
+                    }
+                    // Chưa đến hạn chưa nộp - không hiển thị
+                }
+            }
+        }
+        
+        // Tính điểm trung bình: bao gồm cả các báo cáo quá hạn chưa nộp (tính là 0 điểm)
+        double averageScore = scoredCount > 0 ? totalScore / scoredCount : 0;
+        
+        // Xác định xếp loại
+        String rating = calculateRating(averageScore);
+        
+        ReportStatisticsDTO.SummaryDTO summary = ReportStatisticsDTO.SummaryDTO.builder()
+                .totalReports(reportItems.size())
+                .onTimeReports(onTimeCount)
+                .overdueReports(overdueCount)
+                .averageScore(averageScore)
+                .rating(rating)
+                .build();
+        
+        return ReportStatisticsDTO.builder()
+                .reports(reportItems)
+                .summary(summary)
+                .build();
+    }
+    
+    /**
+     * Tính xếp loại dựa trên điểm trung bình
+     * >= 8.5: A
+     * >= 8 và < 8.5: B
+     * >= 6 và < 8: C
+     * < 6: D
+     */
+    private String calculateRating(double averageScore) {
+        if (averageScore >= 8.5) {
+            return "A";
+        } else if (averageScore >= 8.0) {
+            return "B";
+        } else if (averageScore >= 6.0) {
+            return "C";
+        } else {
+            return "D";
+        }
+    }
+    
+    /**
+     * Tạo danh sách file tài liệu kiểm chứng từ response items
+     */
+    private List<ReportStatisticsDTO.DocumentFileDTO> buildDocumentFiles(ReportResponse response) {
+        if (response == null || response.getItems() == null || response.getItems().isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        // Lấy tất cả file từ items có file
+        return response.getItems().stream()
+                .filter(item -> item.getFilePath() != null && !item.getFilePath().trim().isEmpty())
+                .map(item -> {
+                    String fileName = item.getFileName() != null && !item.getFileName().trim().isEmpty() 
+                            ? item.getFileName() 
+                            : "file";
+                    return ReportStatisticsDTO.DocumentFileDTO.builder()
+                            .fileName(fileName)
+                            .filePath(item.getFilePath())
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Tạo link tài liệu kiểm chứng từ response items (backward compatibility)
+     */
+    private String buildDocumentLink(ReportResponse response) {
+        List<ReportStatisticsDTO.DocumentFileDTO> files = buildDocumentFiles(response);
+        if (files.isEmpty()) {
+            return "-";
+        }
+        
+        // Tạo HTML string với links
+        return files.stream()
+                .map(file -> {
+                    String link = String.format("/api/report-responses/files/%s", file.getFilePath());
+                    return String.format("<a href=\"%s\" target=\"_blank\" class=\"text-blue-600 hover:underline\">%s</a>", 
+                            link, file.getFileName());
+                })
+                .collect(Collectors.joining(", "));
+    }
 }
 

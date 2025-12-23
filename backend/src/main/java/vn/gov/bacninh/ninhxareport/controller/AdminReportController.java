@@ -19,6 +19,9 @@ public class AdminReportController {
     @Autowired
     private AdminReportService adminReportService;
     
+    @Autowired
+    private vn.gov.bacninh.ninhxareport.service.ReportResponseService reportResponseService;
+    
     /**
      * Lấy tất cả báo cáo với tìm kiếm và filter
      */
@@ -90,6 +93,27 @@ public class AdminReportController {
         try {
             ReportResponseDTO response = adminReportService.getResponseById(id);
             return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
+    /**
+     * Lấy thống kê điểm báo cáo (admin - có thể filter theo user)
+     */
+    @GetMapping("/score-statistics")
+    public ResponseEntity<ApiResponse<ReportStatisticsDTO>> getScoreStatistics(
+            @RequestParam(required = false) Long userId) {
+        try {
+            ReportStatisticsDTO statistics;
+            if (userId != null) {
+                // Lấy thống kê cho user cụ thể
+                statistics = reportResponseService.getReportStatisticsByUser(userId);
+            } else {
+                // Lấy thống kê cho tất cả users
+                statistics = reportResponseService.getAllReportStatistics();
+            }
+            return ResponseEntity.ok(ApiResponse.success(statistics));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }

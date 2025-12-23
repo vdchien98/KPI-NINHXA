@@ -196,6 +196,7 @@ export const reportResponseApi = {
   getMyResponses: () => api.get('/report-responses/my-responses'),
   getById: (id: number) => api.get(`/report-responses/${id}`),
   getMyResponseForRequest: (requestId: number) => api.get(`/report-responses/by-request/${requestId}/my`),
+  getMyStatistics: () => api.get('/report-responses/my-statistics'),
   create: (data: {
     reportRequestId: number;
     note?: string;
@@ -321,6 +322,10 @@ export const adminReportApi = {
     items?: any[];
   }) => api.put(`/admin/reports/responses/${id}`, data),
   getResponseById: (id: number) => api.get(`/admin/reports/responses/${id}`),
+  getScoreStatistics: (userId?: number) => {
+    const params = userId ? `?userId=${userId}` : '';
+    return api.get(`/admin/reports/score-statistics${params}`);
+  },
 };
 
 // Zalo OAuth API

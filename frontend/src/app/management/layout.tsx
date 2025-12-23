@@ -56,6 +56,11 @@ const sidebarItems = [
     href: '/management/inbox',
     icon: Inbox,
   },
+  {
+    title: 'Thống kê Điểm Báo cáo',
+    href: '/management/my-statistics',
+    icon: Star,
+  },
 ]
 
 export default function ManagementLayout({
