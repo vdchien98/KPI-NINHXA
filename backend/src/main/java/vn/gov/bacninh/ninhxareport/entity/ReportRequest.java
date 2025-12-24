@@ -3,7 +3,9 @@ package vn.gov.bacninh.ninhxareport.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -72,6 +74,10 @@ public class ReportRequest {
     
     @Column(name = "last_deadline_notification_sent_at")
     private LocalDateTime lastDeadlineNotificationSentAt;
+    
+    @OneToMany(mappedBy = "reportRequest", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ReportRequestAttachment> attachments = new ArrayList<>();
     
     @PrePersist
     protected void onCreate() {

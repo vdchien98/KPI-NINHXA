@@ -23,5 +23,8 @@ public class CreateReportRequestDTO {
     
     @NotNull(message = "Thời hạn báo cáo không được để trống")
     private LocalDateTime deadline;
+    
+    // For update operations - list of attachment IDs to delete
+    private List<Long> deletedAttachmentIds;
 }
 

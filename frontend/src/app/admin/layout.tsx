@@ -39,12 +39,12 @@ const sidebarItems = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Quản lý Báo cáo',
+    title: 'Quản lý Công việc',
     href: '/admin/reports',
     icon: FileText,
   },
   {
-    title: 'Thống kê Điểm Báo cáo',
+    title: 'Điểm Báo cáo Công việc',
     href: '/admin/reports/statistics',
     icon: Star,
   },

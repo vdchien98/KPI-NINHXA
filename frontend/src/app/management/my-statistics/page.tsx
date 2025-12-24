@@ -123,8 +123,8 @@ export default function MyStatisticsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Thống kê Điểm Báo cáo</h1>
-          <p className="text-gray-500 mt-1">Xem thống kê điểm báo cáo của bạn</p>
+          <h1 className="text-3xl font-bold text-gray-900">Thống kê Điểm Công việc</h1>
+          <p className="text-gray-500 mt-1">Xem thống kê điểm Công việc của bạn</p>
         </div>
       </div>
 

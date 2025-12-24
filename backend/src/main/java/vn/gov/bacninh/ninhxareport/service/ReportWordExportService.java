@@ -387,6 +387,19 @@ public class ReportWordExportService {
                     progressRun.setText(progressText);
                     progressRun.setFontSize(13);
                     progressRun.setFontFamily("Times New Roman");
+                    
+                    // Hiển thị khó khăn gặp phải (nếu có)
+                    if (item.getDifficulties() != null && !item.getDifficulties().trim().isEmpty()) {
+                        XWPFParagraph difficultiesPara = document.createParagraph();
+                        difficultiesPara.setAlignment(ParagraphAlignment.LEFT);
+                        difficultiesPara.setSpacingAfter(100);
+                        difficultiesPara.setIndentationLeft(400); // Indent cho bullet
+                        
+                        XWPFRun difficultiesRun = difficultiesPara.createRun();
+                        difficultiesRun.setText("Khó khăn gặp phải: " + item.getDifficulties());
+                        difficultiesRun.setFontSize(13);
+                        difficultiesRun.setFontFamily("Times New Roman");
+                    }
                 }
             }
             

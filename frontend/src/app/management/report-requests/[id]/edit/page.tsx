@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2, Users, Calendar, Info } from 'lucide-react'
+import { ArrowLeft, Loader2, Users, Calendar, Info, Upload, X, FileText, Download, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -23,6 +23,14 @@ interface User {
   position?: { id: number; name: string }
 }
 
+interface ReportRequestAttachment {
+  id: number
+  fileName: string
+  filePath: string
+  fileType?: string
+  fileSize?: number
+}
+
 interface ReportRequest {
   id: number
   title: string
@@ -30,6 +38,7 @@ interface ReportRequest {
   deadline: string
   status: string
   targetUsers?: { id: number; fullName: string }[]
+  attachments?: ReportRequestAttachment[]
 }
 
 export default function EditReportRequestPage() {
@@ -48,6 +57,9 @@ export default function EditReportRequestPage() {
     userIds: [] as number[],
     deadline: '',
   })
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [existingAttachments, setExistingAttachments] = useState<ReportRequestAttachment[]>([])
+  const [deletedAttachmentIds, setDeletedAttachmentIds] = useState<number[]>([])
 
   const isSeniorManagement = () => {
     const roleName = currentUser?.role?.name?.toLowerCase() || ''
@@ -94,6 +106,11 @@ export default function EditReportRequestPage() {
         userIds: request.targetUsers?.map(u => u.id) || [],
         deadline: toDateTimeLocal(request.deadline),
       })
+      
+      // Load existing attachments
+      if (request.attachments) {
+        setExistingAttachments(request.attachments)
+      }
     } catch (error) {
       toast({
         title: 'Lỗi',
@@ -142,12 +159,30 @@ export default function EditReportRequestPage() {
 
     setIsSubmitting(true)
     try {
-      await reportRequestApi.update(Number(params.id), {
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        userIds: formData.userIds,
-        deadline: fromDateTimeLocal(formData.deadline),
-      })
+      // If there are new files or deleted attachments, use multipart form data
+      if (selectedFiles.length > 0 || deletedAttachmentIds.length > 0) {
+        const formDataToSend = new FormData()
+        formDataToSend.append('dto', new Blob([JSON.stringify({
+          title: formData.title.trim(),
+          description: formData.description.trim() || undefined,
+          userIds: formData.userIds,
+          deadline: fromDateTimeLocal(formData.deadline),
+          deletedAttachmentIds: deletedAttachmentIds,
+        })], { type: 'application/json' }))
+        
+        selectedFiles.forEach((file) => {
+          formDataToSend.append('files', file)
+        })
+        
+        await reportRequestApi.updateWithFiles(Number(params.id), formDataToSend)
+      } else {
+        await reportRequestApi.update(Number(params.id), {
+          title: formData.title.trim(),
+          description: formData.description.trim() || undefined,
+          userIds: formData.userIds,
+          deadline: fromDateTimeLocal(formData.deadline),
+        })
+      }
       
       toast({
         title: 'Thành công',
@@ -263,6 +298,118 @@ export default function EditReportRequestPage() {
                   value={formData.deadline}
                   onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
                 />
+              </div>
+              
+              {/* Existing Attachments */}
+              {existingAttachments.length > 0 && (
+                <div className="space-y-2">
+                  <Label>File đính kèm hiện có</Label>
+                  <div className="space-y-2">
+                    {existingAttachments.map((attachment) => (
+                      <div key={attachment.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                          <span className="text-sm text-gray-700 truncate">{attachment.fileName}</span>
+                          {attachment.fileSize && (
+                            <span className="text-xs text-gray-500 flex-shrink-0">
+                              ({(attachment.fileSize / 1024).toFixed(2)} KB)
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const res = await reportRequestApi.downloadAttachment(attachment.filePath)
+                                if (res.data instanceof Blob) {
+                                  const blob = res.data
+                                  const url = window.URL.createObjectURL(blob)
+                                  const a = document.createElement('a')
+                                  a.href = url
+                                  a.download = attachment.fileName
+                                  document.body.appendChild(a)
+                                  a.click()
+                                  window.URL.revokeObjectURL(url)
+                                  document.body.removeChild(a)
+                                }
+                              } catch (error: any) {
+                                toast({
+                                  title: 'Lỗi',
+                                  description: 'Không thể tải file',
+                                  variant: 'destructive',
+                                })
+                              }
+                            }}
+                            className="h-6 w-6 p-0"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setExistingAttachments(prev => prev.filter(a => a.id !== attachment.id))
+                              setDeletedAttachmentIds(prev => [...prev, attachment.id])
+                            }}
+                            className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* File Upload */}
+              <div className="space-y-2">
+                <Label htmlFor="files" className="flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  Thêm file đính kèm
+                </Label>
+                <div className="space-y-2">
+                  <Input
+                    id="files"
+                    type="file"
+                    multiple
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || [])
+                      setSelectedFiles(prev => [...prev, ...files])
+                    }}
+                    className="cursor-pointer"
+                  />
+                  {selectedFiles.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                            <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                            <span className="text-xs text-gray-500 flex-shrink-0">
+                              ({(file.size / 1024).toFixed(2)} KB)
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+                            }}
+                            className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

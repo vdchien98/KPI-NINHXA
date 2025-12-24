@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Loader2, Users, Calendar, Info } from 'lucide-react'
+import { ArrowLeft, Loader2, Users, Calendar, Info, Upload, X, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -38,6 +38,7 @@ export default function CreateReportRequestPage() {
     userIds: [] as number[],
     deadline: '',
   })
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
 
   const isSeniorManagement = () => {
     const roleName = currentUser?.role?.name?.toLowerCase() || ''
@@ -129,7 +130,7 @@ export default function CreateReportRequestPage() {
         description: formData.description.trim() || undefined,
         userIds: formData.userIds,
         deadline: fromDateTimeLocal(formData.deadline),
-      })
+      }, selectedFiles.length > 0 ? selectedFiles : undefined)
       
       toast({
         title: 'Thành công',
@@ -245,6 +246,50 @@ export default function CreateReportRequestPage() {
                   value={formData.deadline}
                   onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="files" className="flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  File đính kèm
+                </Label>
+                <div className="space-y-2">
+                  <Input
+                    id="files"
+                    type="file"
+                    multiple
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || [])
+                      setSelectedFiles(prev => [...prev, ...files])
+                    }}
+                    className="cursor-pointer"
+                  />
+                  {selectedFiles.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                            <span className="text-sm text-gray-700 truncate">{file.name}</span>
+                            <span className="text-xs text-gray-500 flex-shrink-0">
+                              ({(file.size / 1024).toFixed(2)} KB)
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+                            }}
+                            className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

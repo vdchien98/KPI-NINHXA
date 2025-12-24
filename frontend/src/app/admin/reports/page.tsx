@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { Search, FileText, TrendingUp, Users, CheckCircle, Clock, AlertCircle, Pencil, Eye, List } from 'lucide-react'
+import { Search, FileText, TrendingUp, Users, CheckCircle, Clock, AlertCircle, Pencil, Eye, List, Star, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -31,7 +31,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/use-toast'
-import { adminReportApi, commonApi, reportRequestApi } from '@/lib/api'
+import { adminReportApi, commonApi, reportRequestApi, reportResponseApi } from '@/lib/api'
 import { useRouter } from 'next/navigation'
 import { formatDateOnly, formatDateTime, isPast, toDateTimeLocal, fromDateTimeLocal } from '@/lib/utils'
 
@@ -98,8 +98,10 @@ export default function AdminReportsPage() {
   // Edit dialog states
   const [isEditRequestDialogOpen, setIsEditRequestDialogOpen] = useState(false)
   const [isViewResponsesDialogOpen, setIsViewResponsesDialogOpen] = useState(false)
+  const [isViewResponseDetailDialogOpen, setIsViewResponseDetailDialogOpen] = useState(false)
   const [selectedReport, setSelectedReport] = useState<ReportRequest | null>(null)
   const [responses, setResponses] = useState<any[]>([])
+  const [selectedResponse, setSelectedResponse] = useState<any>(null)
   const [loadingResponses, setLoadingResponses] = useState(false)
   const [editFormData, setEditFormData] = useState({
     title: '',
@@ -212,14 +214,15 @@ export default function AdminReportsPage() {
     setLoadingResponses(true)
     
     try {
-      const res = await reportRequestApi.getById(report.id)
-      setResponses(res.data.data.responses || [])
+      const res = await reportResponseApi.getByRequestId(report.id)
+      setResponses(res.data.data || [])
     } catch (error: any) {
       toast({
         title: 'Lỗi',
-        description: 'Không thể tải danh sách phản hồi',
+        description: error.response?.data?.message || 'Không thể tải danh sách phản hồi',
         variant: 'destructive',
       })
+      setResponses([])
     } finally {
       setLoadingResponses(false)
     }
@@ -241,8 +244,8 @@ export default function AdminReportsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Quản lý Báo cáo</h1>
-          <p className="text-gray-500 mt-1">Thống kê và quản lý tất cả báo cáo trong hệ thống</p>
+          <h1 className="text-3xl font-bold text-gray-900">Quản lý Công việc</h1>
+          <p className="text-gray-500 mt-1">Thống kê và quản lý tất cả Công việc trong hệ thống</p>
         </div>
       </div>
 
@@ -251,7 +254,7 @@ export default function AdminReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tổng số báo cáo</CardTitle>
+              <CardTitle className="text-sm font-medium">Tổng số báo cáo Công việc</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -558,11 +561,14 @@ export default function AdminReportsPage() {
                       </div>
                       <Button
                         size="sm"
-                        onClick={() => router.push(`/admin/reports/responses/${response.id}`)}
-                        className="bg-[#DA251D] hover:bg-[#b91d17]"
+                        onClick={() => {
+                          setSelectedResponse(response)
+                          setIsViewResponseDetailDialogOpen(true)
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700"
                       >
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Chỉnh sửa
+                        <Eye className="h-4 w-4 mr-2" />
+                        Xem
                       </Button>
                     </div>
                   </CardHeader>
@@ -614,6 +620,182 @@ export default function AdminReportsPage() {
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsViewResponsesDialogOpen(false)}>
+              Đóng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Response Detail Dialog */}
+      <Dialog open={isViewResponseDetailDialogOpen} onOpenChange={setIsViewResponseDetailDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Chi tiết phản hồi</DialogTitle>
+            <DialogDescription>
+              {selectedResponse?.submittedBy?.fullName || 'N/A'} - {selectedReport?.title}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedResponse && (
+            <div className="space-y-6">
+              {/* Thông tin người nộp */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-lg">
+                        Báo cáo từ: {selectedResponse.submittedBy?.fullName || 'N/A'}
+                      </CardTitle>
+                      <CardDescription>
+                        {selectedResponse.submittedBy?.email || 'N/A'}
+                        {selectedResponse.submittedAt && (
+                          <span className="ml-2">• Nộp lúc: {formatDateTime(selectedResponse.submittedAt)}</span>
+                        )}
+                      </CardDescription>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      {selectedResponse.score !== null && selectedResponse.score !== undefined ? (
+                        <div className="flex items-center gap-2">
+                          <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />
+                          <span className="text-lg font-bold text-yellow-600">
+                            Điểm: {selectedResponse.score}/10
+                          </span>
+                          {selectedResponse.evaluatedAt && (
+                            <span className="text-xs text-gray-500">
+                              ({formatDateOnly(selectedResponse.evaluatedAt)})
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <Badge className="bg-purple-100 text-purple-700">Chờ đánh giá</Badge>
+                      )}
+                      {selectedResponse.selfScore !== null && selectedResponse.selfScore !== undefined && (
+                        <div className="flex items-center gap-2">
+                          <Star className="h-4 w-4 text-blue-500 fill-blue-500" />
+                          <span className="text-sm font-semibold text-blue-600">
+                            Tự đánh giá: {selectedResponse.selfScore}/10
+                          </span>
+                          {selectedResponse.selfEvaluatedAt && (
+                            <span className="text-xs text-gray-500">
+                              ({formatDateOnly(selectedResponse.selfEvaluatedAt)})
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {selectedResponse.note && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-gray-500 mb-1">Ghi chú:</h4>
+                      <p className="text-gray-900">{selectedResponse.note}</p>
+                    </div>
+                  )}
+                  
+                  {selectedResponse.items && selectedResponse.items.length > 0 ? (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium text-gray-500">Nội dung báo cáo:</h4>
+                      {selectedResponse.items.map((item: any, index: number) => (
+                        <div key={item.id} className="border rounded-lg p-4 bg-white space-y-3">
+                          <div className="flex items-start gap-3">
+                            <Badge variant="outline" className="shrink-0">Mục {index + 1}</Badge>
+                            <div className="flex-1 min-w-0 space-y-2">
+                              {item.title && (
+                                <h4 className="font-semibold text-gray-900">{item.title}</h4>
+                              )}
+                              {item.content && (
+                                <p className="text-gray-700 whitespace-pre-wrap">{item.content}</p>
+                              )}
+                              {item.progress !== undefined && item.progress !== null && (
+                                <div className="space-y-1">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="text-gray-600">Tiến độ hoàn thành:</span>
+                                    <span className="font-medium">{item.progress}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div 
+                                      className="bg-[#DA251D] h-2 rounded-full transition-all"
+                                      style={{ width: `${item.progress}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                              {item.difficulties && (
+                                <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                                  <p className="text-sm font-medium text-yellow-800 mb-1">Khó khăn gặp phải:</p>
+                                  <p className="text-sm text-yellow-900 whitespace-pre-wrap">{item.difficulties}</p>
+                                </div>
+                              )}
+                              {item.filePath && (
+                                <div className="flex items-center gap-2 pt-2 border-t">
+                                  <FileText className="h-4 w-4 text-gray-500" />
+                                  <Button
+                                    variant="link"
+                                    className="p-0 text-blue-600"
+                                    onClick={async () => {
+                                      if (!item.filePath) return
+                                      try {
+                                        const res = await reportResponseApi.downloadFile(item.filePath)
+                                        const blob = new Blob([res.data])
+                                        const url = window.URL.createObjectURL(blob)
+                                        const a = document.createElement('a')
+                                        a.href = url
+                                        a.download = item.fileName || 'file'
+                                        document.body.appendChild(a)
+                                        a.click()
+                                        window.URL.revokeObjectURL(url)
+                                        document.body.removeChild(a)
+                                      } catch (error: any) {
+                                        toast({
+                                          title: 'Lỗi',
+                                          description: error.response?.data?.message || 'Không thể tải file',
+                                          variant: 'destructive',
+                                        })
+                                      }
+                                    }}
+                                  >
+                                    <Download className="h-4 w-4 mr-1" />
+                                    {item.fileName || 'Tải file đính kèm'}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-gray-500 text-sm">
+                      Chưa có nội dung báo cáo
+                    </div>
+                  )}
+
+                  {selectedResponse.comment && (
+                    <div className="pt-4 border-t space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-gray-500">
+                          Đã được đánh giá bởi: {selectedResponse.evaluatedBy?.fullName || 'N/A'}
+                          {selectedResponse.evaluatedAt && (
+                            <span className="ml-2">
+                              ({formatDateTime(selectedResponse.evaluatedAt)})
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <p className="text-sm font-medium text-blue-700 mb-1">Nhận xét:</p>
+                        <p className="text-sm text-blue-900 whitespace-pre-wrap">{selectedResponse.comment}</p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewResponseDetailDialogOpen(false)}>
               Đóng
             </Button>
           </DialogFooter>

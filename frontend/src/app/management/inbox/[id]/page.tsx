@@ -14,7 +14,9 @@ import {
   AlertCircle,
   Edit,
   Star,
-  Forward
+  Forward,
+  Download,
+  Eye
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -69,6 +71,14 @@ interface ReportResponse {
   }[]
 }
 
+interface ReportRequestAttachment {
+  id: number
+  fileName: string
+  filePath: string
+  fileType?: string
+  fileSize?: number
+}
+
 interface ReportRequest {
   id: number
   title: string
@@ -82,6 +92,7 @@ interface ReportRequest {
     fullName: string
     email: string
   }
+  attachments?: ReportRequestAttachment[]
 }
 
 export default function ReceivedRequestDetailPage() {
@@ -476,6 +487,96 @@ export default function ReceivedRequestDetailPage() {
                 </div>
               )}
               
+              {request.attachments && request.attachments.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-gray-500">File đính kèm</h3>
+                  <div className="space-y-2">
+                    {request.attachments.map((attachment: any) => (
+                      <div key={attachment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                          <span className="text-sm text-gray-700 truncate">{attachment.fileName}</span>
+                          {attachment.fileSize && (
+                            <span className="text-xs text-gray-500 flex-shrink-0">
+                              ({(attachment.fileSize / 1024).toFixed(2)} KB)
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const res = await reportRequestApi.downloadAttachment(attachment.filePath)
+                                if (res.data instanceof Blob) {
+                                  const blob = res.data
+                                  const url = window.URL.createObjectURL(blob)
+                                  const a = document.createElement('a')
+                                  a.href = url
+                                  a.download = attachment.fileName
+                                  document.body.appendChild(a)
+                                  a.click()
+                                  window.URL.revokeObjectURL(url)
+                                  document.body.removeChild(a)
+                                } else {
+                                  throw new Error('Invalid response data')
+                                }
+                              } catch (error: any) {
+                                console.error('Download error:', error)
+                                toast({
+                                  title: 'Lỗi',
+                                  description: error.response?.data?.message || error.message || 'Không thể tải file',
+                                  variant: 'destructive',
+                                })
+                              }
+                            }}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Tải xuống
+                          </Button>
+                          {(attachment.fileType?.includes('pdf') || 
+                             attachment.fileType?.includes('image') ||
+                             attachment.fileName?.toLowerCase().endsWith('.pdf') ||
+                             attachment.fileName?.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/i)) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                try {
+                                  // Use direct URL for faster preview - browser will handle streaming
+                                  const fileUrl = reportRequestApi.getAttachmentUrl(attachment.filePath)
+                                  const token = localStorage.getItem('token')
+                                  // Open in new tab - browser will stream the file directly
+                                  const previewWindow = window.open(fileUrl, '_blank')
+                                  if (!previewWindow) {
+                                    toast({
+                                      title: 'Lỗi',
+                                      description: 'Không thể mở cửa sổ mới. Vui lòng kiểm tra popup blocker.',
+                                      variant: 'destructive',
+                                    })
+                                  }
+                                } catch (error: any) {
+                                  console.error('Preview error:', error)
+                                  toast({
+                                    title: 'Lỗi',
+                                    description: error.message || 'Không thể xem file',
+                                    variant: 'destructive',
+                                  })
+                                }
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Xem trước
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
                 <div className="flex items-center gap-3">
                   <Calendar className={`h-5 w-5 ${isOverdue(request.deadline) ? 'text-red-500' : 'text-gray-400'}`} />
@@ -522,6 +623,144 @@ export default function ReceivedRequestDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* My Report Response */}
+          {myResponse && (
+            <Card className="border-0 shadow-md">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-green-600" />
+                      Báo cáo của bạn
+                    </CardTitle>
+                    <CardDescription>
+                      Nộp lúc: {formatDateTime(myResponse.submittedAt)}
+                      <div className="flex items-center gap-4 mt-2">
+                        {myResponse.score !== null && myResponse.score !== undefined && (
+                          <span className="flex items-center gap-1">
+                            <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                            <span className="font-semibold text-yellow-600">
+                              Điểm đánh giá: {myResponse.score}/10
+                            </span>
+                            {myResponse.evaluatedAt && (
+                              <span className="text-gray-500 text-xs">
+                                ({formatDateUtil(myResponse.evaluatedAt, { day: '2-digit', month: '2-digit', year: 'numeric' })})
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </CardDescription>
+                  </div>
+                  {myResponse.score === null || myResponse.score === undefined ? (
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/management/inbox/${params.id}/submit`)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Chỉnh sửa
+                    </Button>
+                  ) : (
+                    <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100">
+                      Đã được đánh giá
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {myResponse.note && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-gray-500 mb-1">Ghi chú:</h4>
+                    <p className="text-gray-900">{myResponse.note}</p>
+                  </div>
+                )}
+                {myResponse.comment && (
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-blue-700">Nhận xét từ người đánh giá:</h4>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={openCommentHistory}
+                      >
+                        Xem lịch sử nhận xét
+                      </Button>
+                    </div>
+                    <p className="text-blue-900 whitespace-pre-wrap">{myResponse.comment}</p>
+                    {myResponse.evaluatedBy && (
+                      <p className="text-xs text-blue-600 mt-2">
+                        - {myResponse.evaluatedBy.fullName}
+                        {myResponse.evaluatedAt && (
+                          <span className="ml-2">
+                            ({formatDateTime(myResponse.evaluatedAt)})
+                          </span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                )}
+                
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-gray-500">Nội dung báo cáo:</h4>
+                  {myResponse.items && myResponse.items.length > 0 ? (
+                    myResponse.items.map((item: any, index: number) => (
+                      <div key={item.id} className="border rounded-lg p-4 bg-white space-y-3">
+                        <div className="flex items-start gap-3">
+                          <Badge variant="outline" className="shrink-0">Mục {index + 1}</Badge>
+                          <div className="flex-1 min-w-0 space-y-2">
+                            {item.title && (
+                              <h4 className="font-semibold text-gray-900">{item.title}</h4>
+                            )}
+                            {item.content && (
+                              <p className="text-gray-700 whitespace-pre-wrap">{item.content}</p>
+                            )}
+                            {item.progress !== undefined && item.progress !== null && (
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-gray-600">Tiến độ hoàn thành:</span>
+                                  <span className="font-medium">{item.progress}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div 
+                                    className="bg-[#DA251D] h-2 rounded-full transition-all"
+                                    style={{ width: `${item.progress}%` }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            {item.difficulties && (
+                              <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                                <p className="text-sm font-medium text-yellow-800 mb-1">Khó khăn gặp phải:</p>
+                                <p className="text-sm text-yellow-900 whitespace-pre-wrap">{item.difficulties}</p>
+                              </div>
+                            )}
+                            {item.filePath && (
+                              <div className="flex items-center gap-2 pt-2 border-t">
+                                <FileText className="h-4 w-4 text-gray-500" />
+                                <Button
+                                  variant="link"
+                                  className="p-0 text-blue-600"
+                                  onClick={() => handleDownload(item.filePath, item.fileName)}
+                                >
+                                  {item.fileName || 'Tải file đính kèm'}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-gray-500 text-sm">
+                      Chưa có nội dung báo cáo
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -601,14 +840,6 @@ export default function ReceivedRequestDetailPage() {
                 </div>
               )}
               <Button 
-                className="w-full bg-green-600 hover:bg-green-700"
-                onClick={() => handleStatusChange('COMPLETED')}
-                disabled={myResponseStatus === 'COMPLETED' || isUpdatingStatus}
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Đánh dấu hoàn thành
-              </Button>
-              <Button 
                 variant="outline"
                 className="w-full"
                 onClick={handleOpenForwardDialog}
@@ -678,138 +909,6 @@ export default function ReceivedRequestDetailPage() {
           </Card>
         </div>
       </div>
-
-      {/* My Report Response */}
-      {myResponse && (
-        <Card className="border-0 shadow-md">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-green-600" />
-                  Báo cáo của bạn
-                </CardTitle>
-                <CardDescription>
-                  Nộp lúc: {formatDateTime(myResponse.submittedAt)}
-                  <div className="flex items-center gap-4 mt-2">
-                    {myResponse.score !== null && myResponse.score !== undefined && (
-                      <span className="flex items-center gap-1">
-                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                        <span className="font-semibold text-yellow-600">
-                          Điểm đánh giá: {myResponse.score}/10
-                        </span>
-                        {myResponse.evaluatedAt && (
-                          <span className="text-gray-500 text-xs">
-                            ({formatDateUtil(myResponse.evaluatedAt, { day: '2-digit', month: '2-digit', year: 'numeric' })})
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                </CardDescription>
-              </div>
-              {myResponse.score === null || myResponse.score === undefined ? (
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.push(`/management/inbox/${params.id}/submit`)}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Chỉnh sửa
-                </Button>
-              ) : (
-                <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100">
-                  Đã được đánh giá
-                </Badge>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {myResponse.note && (
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-gray-500 mb-1">Ghi chú:</h4>
-                <p className="text-gray-900">{myResponse.note}</p>
-              </div>
-            )}
-            {myResponse.comment && (
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium text-blue-700">Nhận xét từ người đánh giá:</h4>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={openCommentHistory}
-                  >
-                    Xem lịch sử nhận xét
-                  </Button>
-                </div>
-                <p className="text-blue-900 whitespace-pre-wrap">{myResponse.comment}</p>
-                {myResponse.evaluatedBy && (
-                  <p className="text-xs text-blue-600 mt-2">
-                    - {myResponse.evaluatedBy.fullName}
-                    {myResponse.evaluatedAt && (
-                      <span className="ml-2">
-                        ({formatDateTime(myResponse.evaluatedAt)})
-                      </span>
-                    )}
-                  </p>
-                )}
-              </div>
-            )}
-            
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium text-gray-500">Nội dung báo cáo:</h4>
-              {myResponse.items.map((item, index) => (
-                <div key={item.id} className="border rounded-lg p-4 bg-white space-y-3">
-                  <div className="flex items-start gap-3">
-                    <Badge variant="outline" className="shrink-0">Mục {index + 1}</Badge>
-                    <div className="flex-1 min-w-0 space-y-2">
-                      {item.title && (
-                        <h4 className="font-semibold text-gray-900">{item.title}</h4>
-                      )}
-                      {item.content && (
-                        <p className="text-gray-700 whitespace-pre-wrap">{item.content}</p>
-                      )}
-                      {item.progress !== undefined && item.progress !== null && (
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Tiến độ hoàn thành:</span>
-                            <span className="font-medium">{item.progress}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-[#DA251D] h-2 rounded-full transition-all"
-                              style={{ width: `${item.progress}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-                      {item.difficulties && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
-                          <p className="text-sm font-medium text-yellow-800 mb-1">Khó khăn gặp phải:</p>
-                          <p className="text-sm text-yellow-900 whitespace-pre-wrap">{item.difficulties}</p>
-                        </div>
-                      )}
-                      {item.filePath && (
-                        <div className="flex items-center gap-2 pt-2 border-t">
-                          <FileText className="h-4 w-4 text-gray-500" />
-                          <Button
-                            variant="link"
-                            className="p-0 text-blue-600"
-                            onClick={() => handleDownload(item.filePath, item.fileName)}
-                          >
-                            {item.fileName || 'Tải file đính kèm'}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Request History Dialog */}
       <Dialog open={requestHistoryOpen} onOpenChange={setRequestHistoryOpen}>

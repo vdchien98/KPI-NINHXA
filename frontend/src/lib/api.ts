@@ -163,7 +163,20 @@ export const reportRequestApi = {
     departmentIds?: number[];
     userIds?: number[];
     deadline: string;
-  }) => api.post('/report-requests', data),
+  }, files?: File[]) => {
+    const formData = new FormData();
+    formData.append('dto', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    if (files && files.length > 0) {
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+    }
+    return api.post('/report-requests', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
   update: (id: number, data: {
     title: string;
     description?: string;
@@ -172,6 +185,11 @@ export const reportRequestApi = {
     userIds?: number[];
     deadline: string;
   }) => api.put(`/report-requests/${id}`, data),
+  updateWithFiles: (id: number, formData: FormData) => api.put(`/report-requests/${id}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  }),
   delete: (id: number) => api.delete(`/report-requests/${id}`),
   updateStatus: (id: number, status: string) => 
     api.patch(`/report-requests/${id}/status?status=${status}`),
@@ -188,6 +206,23 @@ export const reportRequestApi = {
   exportWord: (id: number) => api.get(`/report-requests/${id}/export-word`, {
     responseType: 'blob',
   }),
+  downloadAttachment: (filePath: string) => {
+    // Don't double encode - Spring will handle it
+    // Just replace spaces and ensure proper encoding
+    const encodedPath = filePath.split('/').map(part => encodeURIComponent(part)).join('/');
+    return api.get(`/report-requests/files/${encodedPath}`, {
+      responseType: 'blob',
+      // Enable streaming for better performance
+      onDownloadProgress: (progressEvent) => {
+        // Progress tracking can be added here if needed
+      },
+    });
+  },
+  getAttachmentUrl: (filePath: string) => {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:9499/api';
+    const encodedPath = filePath.split('/').map(part => encodeURIComponent(part)).join('/');
+    return `${API_BASE_URL}/report-requests/files/${encodedPath}`;
+  },
 };
 
 // Report Response API

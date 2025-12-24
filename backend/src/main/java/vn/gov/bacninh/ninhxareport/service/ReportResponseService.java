@@ -43,7 +43,7 @@ public class ReportResponseService {
     private ReportResponseCommentRepository reportResponseCommentRepository;
     
     public List<ReportResponseDTO> getByReportRequestId(Long requestId) {
-        return reportResponseRepository.findByReportRequestIdOrderByCreatedAtDesc(requestId).stream()
+        return reportResponseRepository.findByReportRequestIdWithItems(requestId).stream()
                 .map(ReportResponseDTO::fromEntity)
                 .collect(Collectors.toList());
     }

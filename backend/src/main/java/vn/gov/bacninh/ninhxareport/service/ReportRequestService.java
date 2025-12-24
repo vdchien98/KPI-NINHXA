@@ -1,8 +1,11 @@
 package vn.gov.bacninh.ninhxareport.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import vn.gov.bacninh.ninhxareport.dto.*;
 import vn.gov.bacninh.ninhxareport.entity.*;
 import vn.gov.bacninh.ninhxareport.repository.*;
@@ -20,6 +23,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class ReportRequestService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ReportRequestService.class);
     
     @Autowired
     private ReportRequestRepository reportRequestRepository;
@@ -51,6 +56,9 @@ public class ReportRequestService {
     @Autowired
     private ObjectMapper objectMapper;
     
+    @Autowired
+    private ReportRequestAttachmentRepository reportRequestAttachmentRepository;
+    
     public List<ReportRequestDTO> getAllReportRequests() {
         return reportRequestRepository.findAllOrderByCreatedAtDesc().stream()
                 .map(request -> enrichWithStatistics(ReportRequestDTO.fromEntity(request), request.getId()))
@@ -77,11 +85,13 @@ public class ReportRequestService {
     public ReportRequestDTO getById(Long id) {
         ReportRequest request = reportRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu báo cáo với id: " + id));
+        // Load attachments
+        request.setAttachments(reportRequestAttachmentRepository.findByReportRequestId(id));
         return enrichWithStatistics(ReportRequestDTO.fromEntity(request), id);
     }
     
     @Transactional
-    public ReportRequestDTO createReportRequest(CreateReportRequestDTO dto, Long createdByUserId) {
+    public ReportRequestDTO createReportRequest(CreateReportRequestDTO dto, Long createdByUserId, MultipartFile[] files) throws IOException {
         User createdBy = userRepository.findById(createdByUserId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
         
@@ -128,8 +138,31 @@ public class ReportRequestService {
         
         request = reportRequestRepository.save(request);
         
+        // Handle file uploads
+        if (files != null && files.length > 0) {
+            for (MultipartFile file : files) {
+                if (file != null && !file.isEmpty()) {
+                    String filePath = fileStorageService.storeFile(file, "report-requests/" + request.getId());
+                    
+                    ReportRequestAttachment attachment = ReportRequestAttachment.builder()
+                            .reportRequest(request)
+                            .fileName(file.getOriginalFilename())
+                            .filePath(filePath)
+                            .fileType(file.getContentType())
+                            .fileSize(file.getSize())
+                            .build();
+                    
+                    reportRequestAttachmentRepository.save(attachment);
+                }
+            }
+        }
+        
         // Save history snapshot for initial creation
         saveHistorySnapshot(request, createdBy);
+        
+        // Reload request with attachments
+        request = reportRequestRepository.findById(request.getId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu sau khi tạo"));
         
         return ReportRequestDTO.fromEntity(request);
     }
@@ -203,7 +236,8 @@ public class ReportRequestService {
     }
     
     @Transactional
-    public ReportRequestDTO updateReportRequest(Long id, CreateReportRequestDTO dto, Long userId) {
+    public ReportRequestDTO updateReportRequest(Long id, CreateReportRequestDTO dto, Long userId, 
+                                                 MultipartFile[] files, List<Long> deletedAttachmentIds) {
         ReportRequest request = reportRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu báo cáo với id: " + id));
         
@@ -249,10 +283,50 @@ public class ReportRequestService {
         
         request = reportRequestRepository.save(request);
         
+        // Handle deleted attachments
+        if (deletedAttachmentIds != null && !deletedAttachmentIds.isEmpty()) {
+            for (Long attachmentId : deletedAttachmentIds) {
+                reportRequestAttachmentRepository.findById(attachmentId).ifPresent(attachment -> {
+                    // Delete file from storage
+                    try {
+                        fileStorageService.deleteFile(attachment.getFilePath());
+                    } catch (Exception e) {
+                        logger.warn("Failed to delete file: {}", attachment.getFilePath(), e);
+                    }
+                    // Delete attachment record
+                    reportRequestAttachmentRepository.delete(attachment);
+                });
+            }
+        }
+        
+        // Handle new file uploads
+        if (files != null && files.length > 0) {
+            for (MultipartFile file : files) {
+                if (file != null && !file.isEmpty()) {
+                    try {
+                        String filePath = fileStorageService.storeFile(file, "report-requests/" + request.getId());
+                        
+                        ReportRequestAttachment attachment = ReportRequestAttachment.builder()
+                                .reportRequest(request)
+                                .fileName(file.getOriginalFilename())
+                                .filePath(filePath)
+                                .fileType(file.getContentType())
+                                .fileSize(file.getSize())
+                                .build();
+                        reportRequestAttachmentRepository.save(attachment);
+                    } catch (IOException e) {
+                        logger.error("Failed to save file: {}", file.getOriginalFilename(), e);
+                        throw new RuntimeException("Không thể lưu file: " + file.getOriginalFilename());
+                    }
+                }
+            }
+        }
+        
         // Save history snapshot
         saveHistorySnapshot(request, editor);
         
-        return ReportRequestDTO.fromEntity(request);
+        // Return with attachments
+        return enrichWithStatistics(ReportRequestDTO.fromEntity(request), request.getId());
     }
     
     private void saveHistorySnapshot(ReportRequest request, User editor) {

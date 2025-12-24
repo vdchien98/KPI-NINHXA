@@ -57,7 +57,7 @@ const sidebarItems = [
     icon: Inbox,
   },
   {
-    title: 'Thống kê Điểm Báo cáo',
+    title: 'Thống kê Điểm Công việc',
     href: '/management/my-statistics',
     icon: Star,
   },

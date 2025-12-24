@@ -42,6 +42,9 @@ public class ReportRequestDTO {
     private Integer evaluatedResponses; // Số response đã được đánh giá
     private Double averageScore; // Điểm trung bình
     
+    // File đính kèm
+    private List<ReportRequestAttachmentDTO> attachments;
+    
     public static ReportRequestDTO fromEntity(ReportRequest request) {
         if (request == null) return null;
         
@@ -75,6 +78,10 @@ public class ReportRequestDTO {
                 .status(request.getStatus() != null ? request.getStatus().name() : null)
                 .createdAt(request.getCreatedAt())
                 .updatedAt(request.getUpdatedAt())
+                .attachments(request.getAttachments() != null ?
+                    request.getAttachments().stream()
+                        .map(ReportRequestAttachmentDTO::fromEntity)
+                        .collect(Collectors.toList()) : null)
                 .build();
     }
 }

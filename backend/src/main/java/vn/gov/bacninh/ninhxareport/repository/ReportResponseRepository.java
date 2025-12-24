@@ -41,5 +41,16 @@ public interface ReportResponseRepository extends JpaRepository<ReportResponse, 
            "LEFT JOIN FETCH r.evaluatedBy " +
            "ORDER BY r.submittedAt DESC")
     List<ReportResponse> findAllWithRelations();
+    
+    @Query("SELECT DISTINCT r FROM ReportResponse r " +
+           "LEFT JOIN FETCH r.items " +
+           "JOIN FETCH r.reportRequest req " +
+           "JOIN FETCH req.createdBy " +
+           "JOIN FETCH r.submittedBy u " +
+           "LEFT JOIN FETCH u.department " +
+           "LEFT JOIN FETCH r.evaluatedBy " +
+           "WHERE r.reportRequest.id = :requestId " +
+           "ORDER BY r.createdAt DESC")
+    List<ReportResponse> findByReportRequestIdWithItems(@Param("requestId") Long requestId);
 }
 

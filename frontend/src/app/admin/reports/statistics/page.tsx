@@ -153,8 +153,8 @@ export default function AdminReportStatisticsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Thống kê Điểm Báo cáo</h1>
-          <p className="text-gray-500 mt-1">Xem thống kê điểm báo cáo của các thành viên</p>
+          <h1 className="text-3xl font-bold text-gray-900">Thống kê Điểm Công việc</h1>
+          <p className="text-gray-500 mt-1">Xem thống kê điểm  Công việc của các thành viên</p>
         </div>
       </div>
 

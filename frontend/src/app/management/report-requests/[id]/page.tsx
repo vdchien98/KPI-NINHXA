@@ -16,7 +16,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Download
+  Download,
+  Eye
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -68,6 +69,13 @@ interface ReportRequest {
   targetOrganizations?: { id: number; name: string }[]
   targetDepartments?: { id: number; name: string }[]
   targetUsers?: { id: number; fullName: string; email: string }[]
+  attachments?: {
+    id: number
+    fileName: string
+    filePath: string
+    fileType?: string
+    fileSize?: number
+  }[]
 }
 
 interface ReportResponse {
@@ -530,6 +538,96 @@ export default function ReportRequestDetailPage() {
                 </div>
               )}
               
+              {request.attachments && request.attachments.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-gray-500">File đính kèm</h3>
+                  <div className="space-y-2">
+                    {request.attachments.map((attachment: any) => (
+                      <div key={attachment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                          <span className="text-sm text-gray-700 truncate">{attachment.fileName}</span>
+                          {attachment.fileSize && (
+                            <span className="text-xs text-gray-500 flex-shrink-0">
+                              ({(attachment.fileSize / 1024).toFixed(2)} KB)
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const res = await reportRequestApi.downloadAttachment(attachment.filePath)
+                                if (res.data instanceof Blob) {
+                                  const blob = res.data
+                                  const url = window.URL.createObjectURL(blob)
+                                  const a = document.createElement('a')
+                                  a.href = url
+                                  a.download = attachment.fileName
+                                  document.body.appendChild(a)
+                                  a.click()
+                                  window.URL.revokeObjectURL(url)
+                                  document.body.removeChild(a)
+                                } else {
+                                  throw new Error('Invalid response data')
+                                }
+                              } catch (error: any) {
+                                console.error('Download error:', error)
+                                toast({
+                                  title: 'Lỗi',
+                                  description: error.response?.data?.message || error.message || 'Không thể tải file',
+                                  variant: 'destructive',
+                                })
+                              }
+                            }}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Tải xuống
+                          </Button>
+                          {(attachment.fileType?.includes('pdf') || 
+                             attachment.fileType?.includes('image') ||
+                             attachment.fileName?.toLowerCase().endsWith('.pdf') ||
+                             attachment.fileName?.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/i)) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                try {
+                                  // Use direct URL for faster preview - browser will handle streaming
+                                  const fileUrl = reportRequestApi.getAttachmentUrl(attachment.filePath)
+                                  const token = localStorage.getItem('token')
+                                  // Open in new tab - browser will stream the file directly
+                                  const previewWindow = window.open(fileUrl, '_blank')
+                                  if (!previewWindow) {
+                                    toast({
+                                      title: 'Lỗi',
+                                      description: 'Không thể mở cửa sổ mới. Vui lòng kiểm tra popup blocker.',
+                                      variant: 'destructive',
+                                    })
+                                  }
+                                } catch (error: any) {
+                                  console.error('Preview error:', error)
+                                  toast({
+                                    title: 'Lỗi',
+                                    description: error.message || 'Không thể xem file',
+                                    variant: 'destructive',
+                                  })
+                                }
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Xem trước
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t">
                 <div className="flex items-center gap-3">
                   <Calendar className="h-5 w-5 text-gray-400" />
@@ -955,7 +1053,7 @@ export default function ReportRequestDetailPage() {
                           className="bg-[#DA251D] hover:bg-[#b91c1c]"
                         >
                           <Star className="h-4 w-4 mr-2" />
-                          Đánh giá báo cáo
+                          Đánh giá Công việc
                         </Button>
                       )}
                     </div>
