@@ -179,6 +179,13 @@ public class ReportDeadlineNotificationService {
                 continue;
             }
             
+            // Kiểm tra xem user có bật tính năng gửi Zalo không
+            if (user.getEnableZaloNotification() == null || !user.getEnableZaloNotification()) {
+                log.debug("User {} đã tắt tính năng gửi thông báo Zalo, bỏ qua", user.getEmail());
+                failCount++;
+                continue;
+            }
+            
             try {
                 boolean sent = zaloService.sendNotification(zaloUserId, message);
                 if (sent) {
@@ -268,13 +275,21 @@ public class ReportDeadlineNotificationService {
             timeRemaining = minutesRemaining + " phút";
         }
         
+        // Lấy thông tin người yêu cầu
+        String requesterName = "N/A";
+        if (request.getCreatedBy() != null) {
+            requesterName = request.getCreatedBy().getFullName();
+        }
+        
         return String.format(
             "🔔 Thông báo sắp đến hạn báo cáo\n\n" +
             "📋 Tiêu đề: %s\n" +
+            "👤 Người yêu cầu: %s\n" +
             "⏰ Hạn nộp: %s\n" +
             "⏳ Còn lại: %s\n\n" +
             "Vui lòng hoàn thành và nộp báo cáo trước thời hạn.",
             request.getTitle(),
+            requesterName,
             formatDateTime(deadline),
             timeRemaining
         );

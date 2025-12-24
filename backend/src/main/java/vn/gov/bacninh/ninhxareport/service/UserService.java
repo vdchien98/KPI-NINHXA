@@ -130,6 +130,9 @@ public class UserService {
             user.setLoginMethod(User.LoginMethod.SSO); // Default to SSO
         }
         
+        // Set enableZaloNotification
+        user.setEnableZaloNotification(request.getEnableZaloNotification() != null ? request.getEnableZaloNotification() : true);
+        
         user = userRepository.save(user);
         // Reload user với relations để đảm bảo organizations được load
         user = userRepository.findByIdWithRelations(user.getId())
@@ -220,6 +223,11 @@ public class UserService {
             } catch (IllegalArgumentException e) {
                 // Keep existing loginMethod if invalid
             }
+        }
+        
+        // Set enableZaloNotification
+        if (request.getEnableZaloNotification() != null) {
+            user.setEnableZaloNotification(request.getEnableZaloNotification());
         }
         
         user = userRepository.save(user);

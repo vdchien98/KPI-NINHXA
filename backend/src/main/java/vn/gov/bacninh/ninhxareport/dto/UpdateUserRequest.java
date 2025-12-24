@@ -33,6 +33,8 @@ public class UpdateUserRequest {
     
     private String loginMethod; // 'SSO' or 'PASSWORD'
     
+    private Boolean enableZaloNotification; // Bật/tắt tính năng gửi thông báo Zalo
+    
     private Boolean isActive;
 }
 

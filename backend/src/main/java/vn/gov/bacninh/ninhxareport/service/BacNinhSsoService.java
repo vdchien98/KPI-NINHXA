@@ -105,7 +105,7 @@ public class BacNinhSsoService {
             return tokenResponse;
             
         } catch (Exception e) {
-            logger.error("Error requesting SSO token for user: {}", email, e);
+            logger.error("Error requesting SSO token for user: {}", email);
             throw new RuntimeException("SSO authentication failed: " + e.getMessage(), e);
         }
     }

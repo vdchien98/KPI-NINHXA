@@ -37,6 +37,8 @@ public class CreateUserRequest {
     
     private String loginMethod; // 'SSO' or 'PASSWORD'
     
+    private Boolean enableZaloNotification = true; // Bật/tắt tính năng gửi thông báo Zalo
+    
     private Boolean isActive = true;
 }
 

@@ -67,6 +67,10 @@ public class User {
     
     @Column(name = "zalo_user_id", length = 100)
     private String zaloUserId; // Zalo User ID để gửi thông báo
+    
+    @Column(name = "enable_zalo_notification")
+    @Builder.Default
+    private Boolean enableZaloNotification = true; // Bật/tắt tính năng gửi thông báo Zalo
 
     @Enumerated(EnumType.STRING)
     @Column(name = "login_method", nullable = false, length = 32, columnDefinition = "varchar(32) default 'SSO'")

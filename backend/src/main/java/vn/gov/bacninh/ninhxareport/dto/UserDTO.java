@@ -27,6 +27,7 @@ public class UserDTO {
     private String representativeType; // 'organization', 'department', or null
     private String loginMethod; // 'SSO' or 'PASSWORD'
     private String zaloUserId; // Zalo User ID để gửi thông báo
+    private Boolean enableZaloNotification; // Bật/tắt tính năng gửi thông báo Zalo
     private Boolean isActive;
     private LocalDateTime lastLogin;
     private LocalDateTime createdAt;
@@ -50,6 +51,7 @@ public class UserDTO {
                 .representativeType(user.getRepresentativeType())
                 .loginMethod(user.getLoginMethod() != null ? user.getLoginMethod().name() : "SSO")
                 .zaloUserId(user.getZaloUserId())
+                .enableZaloNotification(user.getEnableZaloNotification() != null ? user.getEnableZaloNotification() : true)
                 .isActive(user.getIsActive())
                 .lastLogin(user.getLastLogin())
                 .createdAt(user.getCreatedAt())

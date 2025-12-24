@@ -59,6 +59,7 @@ interface User {
   representativeType?: string // 'organization', 'department', or null
   loginMethod?: string // 'SSO' or 'PASSWORD'
   zaloUserId?: string // Zalo User ID
+  enableZaloNotification?: boolean // Bật/tắt tính năng gửi thông báo Zalo
   isActive: boolean
   createdAt: string
 }
@@ -108,6 +109,7 @@ export default function UsersPage() {
     departmentId: '',
     positionId: '',
     loginMethod: 'SSO' as 'SSO' | 'PASSWORD',
+    enableZaloNotification: true,
     isActive: true,
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -185,6 +187,7 @@ export default function UsersPage() {
             departmentId: updatedUser.department?.id.toString() || '',
             positionId: updatedUser.position?.id.toString() || '',
             loginMethod: (updatedUser.loginMethod || 'SSO') as 'SSO' | 'PASSWORD',
+            enableZaloNotification: updatedUser.enableZaloNotification !== undefined ? updatedUser.enableZaloNotification : true,
             isActive: updatedUser.isActive,
           })
         } else {
@@ -201,6 +204,7 @@ export default function UsersPage() {
             departmentId: user.department?.id.toString() || '',
             positionId: user.position?.id.toString() || '',
             loginMethod: (user.loginMethod || 'SSO') as 'SSO' | 'PASSWORD',
+            enableZaloNotification: user.enableZaloNotification !== undefined ? user.enableZaloNotification : true,
             isActive: user.isActive,
           })
         }
@@ -219,6 +223,7 @@ export default function UsersPage() {
           positionId: user.position?.id.toString() || '',
           loginMethod: (user.loginMethod || 'SSO') as 'SSO' | 'PASSWORD',
           isActive: user.isActive,
+          enableZaloNotification: user.enableZaloNotification !== undefined ? user.enableZaloNotification : true,
         })
       }
     } else {
@@ -234,6 +239,7 @@ export default function UsersPage() {
         departmentId: '',
         positionId: '',
         loginMethod: 'SSO' as 'SSO' | 'PASSWORD',
+        enableZaloNotification: true,
         isActive: true,
       })
     }
@@ -331,6 +337,9 @@ export default function UsersPage() {
       
       // Gửi loginMethod
       submitData.loginMethod = formData.loginMethod
+      
+      // Gửi enableZaloNotification
+      submitData.enableZaloNotification = formData.enableZaloNotification
 
       if (selectedUser) {
         if (formData.password) {
@@ -868,6 +877,19 @@ export default function UsersPage() {
                 id="isActive"
                 checked={formData.isActive}
                 onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="enableZaloNotification">Bật thông báo Zalo</Label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Cho phép gửi thông báo Zalo khi báo cáo sắp đến hạn
+                </p>
+              </div>
+              <Switch
+                id="enableZaloNotification"
+                checked={formData.enableZaloNotification}
+                onCheckedChange={(checked) => setFormData({ ...formData, enableZaloNotification: checked })}
               />
             </div>
             
